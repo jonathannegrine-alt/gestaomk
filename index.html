@@ -1,0 +1,2130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MK Gestão Financeira</title>
+  
+  <!-- Biblioteca XLSX para importação Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <style>
+    /* ===== RESET & BASE ===== */
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a;background:#f5f5f5;}
+    
+    /* ===== DESIGN SYSTEM ===== */
+    :root{
+      --primary:#2563eb;
+      --success:#16a34a;
+      --warning:#f59e0b;
+      --danger:#dc2626;
+      --gray-50:#f9fafb;
+      --gray-100:#f3f4f6;
+      --gray-200:#e5e7eb;
+      --gray-600:#4b5563;
+      --gray-900:#111827;
+    }
+    
+    /* ===== LAYOUT ===== */
+    .app{display:flex;min-height:100vh;}
+    
+    .sidebar{
+      width:200px;
+      background:#fff;
+      border-right:1px solid var(--gray-200);
+      position:fixed;
+      height:100vh;
+      overflow-y:auto;
+    }
+    
+    .logo{
+      padding:20px 15px;
+      border-bottom:1px solid var(--gray-200);
+    }
+    
+    .logo-title{
+      font-size:16px;
+      font-weight:700;
+      color:var(--primary);
+    }
+    
+    .logo-sub{
+      font-size:11px;
+      color:var(--gray-600);
+    }
+    
+    .nav-menu{list-style:none;padding:10px 0;}
+    
+    .nav-item{
+      padding:10px 15px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      color:var(--gray-600);
+      transition:all 0.2s;
+    }
+    
+    .nav-item:hover{background:var(--gray-50);color:var(--gray-900);}
+    .nav-item.active{background:#eff6ff;color:var(--primary);font-weight:600;}
+    
+    .main{
+      margin-left:200px;
+      padding:20px 24px;
+      flex:1;
+      width:calc(100% - 200px);
+    }
+    
+    .view{display:none;}
+    .view.active{display:block;}
+    
+    /* ===== COMPONENTS ===== */
+    .card{
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 1px 3px rgba(0,0,0,0.1);
+      overflow:hidden;
+      margin-bottom:20px;
+    }
+    
+    .card-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:16px 20px;
+      border-bottom:1px solid var(--gray-200);
+    }
+    
+    .card-title{font-size:16px;font-weight:600;}
+    
+    .card-body{padding:20px;}
+    
+    /* Botões */
+    .btn{
+      padding:8px 16px;
+      border:none;
+      border-radius:6px;
+      font-size:13px;
+      font-weight:500;
+      cursor:pointer;
+      transition:all 0.2s;
+      background:var(--primary);
+      color:#fff;
+    }
+    
+    .btn:hover{opacity:0.9;transform:translateY(-1px);}
+    
+    .btn-sm{padding:6px 12px;font-size:12px;}
+    
+    .btn-out{
+      background:#fff;
+      border:1px solid var(--gray-200);
+      color:var(--gray-600);
+    }
+    
+    .btn-out:hover{border-color:var(--primary);color:var(--primary);}
+    
+    .btn-del{background:var(--danger);color:#fff;}
+    
+    /* Inputs */
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select,
+    textarea{
+      width:100%;
+      padding:8px 12px;
+      border:1px solid var(--gray-200);
+      border-radius:6px;
+      font-size:13px;
+      font-family:inherit;
+    }
+    
+    input:focus,select:focus,textarea:focus{
+      outline:none;
+      border-color:var(--primary);
+    }
+    
+    /* Form */
+    .form-group{margin-bottom:15px;}
+    .form-label{display:block;margin-bottom:5px;font-weight:500;font-size:12px;color:var(--gray-600);}
+    
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:15px;}
+    
+    /* Table */
+    table{width:100%;border-collapse:collapse;}
+    th,td{padding:10px;text-align:left;border-bottom:1px solid var(--gray-200);}
+    th{background:var(--gray-50);font-weight:600;font-size:12px;color:var(--gray-600);text-transform:uppercase;}
+    td{font-size:13px;}
+    
+    tbody tr:hover{background:var(--gray-50);}
+    
+    /* Modal */
+    .modal{
+      display:none;
+      position:fixed;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      background:rgba(0,0,0,0.5);
+      z-index:1000;
+      align-items:center;
+      justify-content:center;
+    }
+    
+    .modal.open{display:flex;}
+    
+    .modal-content{
+      background:#fff;
+      border-radius:12px;
+      padding:0;
+      max-width:560px;
+      width:90%;
+      max-height:90vh;
+      overflow-y:auto;
+    }
+    
+    .modal-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:16px 20px;
+      border-bottom:1px solid var(--gray-200);
+    }
+    
+    .modal-title{font-size:16px;font-weight:600;}
+    
+    .modal-body{padding:20px;}
+    
+    .modal-footer{
+      padding:16px 20px;
+      border-top:1px solid var(--gray-200);
+      display:flex;
+      gap:8px;
+      justify-content:flex-end;
+    }
+    
+    /* Tabs */
+    .tabs{
+      display:flex;
+      gap:4px;
+      border-bottom:1px solid var(--gray-200);
+      margin-bottom:15px;
+    }
+    
+    .tab{
+      padding:10px 16px;
+      cursor:pointer;
+      border-bottom:2px solid transparent;
+      color:var(--gray-600);
+      transition:all 0.2s;
+    }
+    
+    .tab:hover{color:var(--gray-900);}
+    .tab.active{border-color:var(--primary);color:var(--primary);font-weight:600;}
+    
+    /* Badges */
+    .badge{
+      display:inline-block;
+      padding:3px 8px;
+      border-radius:4px;
+      font-size:11px;
+      font-weight:600;
+    }
+    
+    .badge-success{background:#d1fae5;color:#065f46;}
+    .badge-danger{background:#fee2e2;color:#991b1b;}
+    .badge-warning{background:#fef3c7;color:#92400e;}
+    
+    /* Alerts */
+    .alert{
+      padding:12px 16px;
+      border-radius:6px;
+      margin-bottom:15px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    
+    .alert-info{background:#dbeafe;color:#1e40af;}
+    .alert-warning{background:#fef3c7;color:#92400e;}
+    .alert-danger{background:#fee2e2;color:#991b1b;}
+    
+    /* Stats */
+    .stats-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+      gap:15px;
+      margin-bottom:20px;
+    }
+    
+    .stat-card{
+      background:#fff;
+      padding:16px;
+      border-radius:8px;
+      border-left:4px solid var(--gray-200);
+    }
+    
+    .stat-label{font-size:11px;color:var(--gray-600);text-transform:uppercase;margin-bottom:4px;}
+    .stat-value{font-size:24px;font-weight:700;}
+    
+    .stat-card.success{border-color:var(--success);}
+    .stat-card.danger{border-color:var(--danger);}
+    .stat-card.warning{border-color:var(--warning);}
+    
+    /* Velocímetro Score */
+    .score-gauge{position:relative;width:200px;height:120px;margin:0 auto 10px;}
+    .score-arc{width:200px;height:100px;overflow:hidden;position:relative;}
+    .score-arc svg{width:200px;height:200px;position:absolute;top:0;left:0;}
+    .score-needle{
+      position:absolute;
+      bottom:0;
+      left:50%;
+      width:2px;
+      height:80px;
+      background:#1a1a1a;
+      transform-origin:bottom center;
+      transition:transform 0.8s cubic-bezier(0.4,0,0.2,1);
+      margin-left:-1px;
+      z-index:10;
+    }
+    .score-needle::before{
+      content:'';
+      position:absolute;
+      top:0;
+      left:50%;
+      width:8px;
+      height:8px;
+      background:#1a1a1a;
+      border-radius:50%;
+      transform:translate(-50%,0);
+    }
+    .score-center{
+      position:absolute;
+      bottom:-5px;
+      left:50%;
+      width:20px;
+      height:20px;
+      background:#fff;
+      border:3px solid #1a1a1a;
+      border-radius:50%;
+      transform:translateX(-50%);
+      z-index:11;
+    }
+    .score-value{text-align:center;font-size:32px;font-weight:700;color:#1a1a1a;margin-top:5px;}
+    .score-label{text-align:center;font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;}
+    
+    /* Utilities */
+    .text-center{text-align:center;}
+    .text-success{color:var(--success);}
+    .text-danger{color:var(--danger);}
+    .text-warning{color:var(--warning);}
+    .text-muted{color:var(--gray-600);}
+    
+    .d-flex{display:flex;}
+    .gap-1{gap:8px;}
+    .gap-2{gap:16px;}
+    
+    .mb-1{margin-bottom:8px;}
+    .mb-2{margin-bottom:16px;}
+    .mb-3{margin-bottom:24px;}
+    
+    /* Calendário Grid */
+    .cal-grid{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:1px;
+      background:var(--gray-200);
+    }
+    
+    .cal-header{
+      background:var(--gray-50);
+      padding:8px;
+      text-align:center;
+      font-size:11px;
+      font-weight:600;
+      color:var(--gray-600);
+      text-transform:uppercase;
+    }
+    
+    .cal-day{
+      background:#fff;
+      min-height:100px;
+      padding:8px;
+      position:relative;
+      cursor:pointer;
+      transition:background 0.2s;
+    }
+    
+    .cal-day:hover{background:var(--gray-50);}
+    
+    .cal-day.outro-mes{background:var(--gray-50);opacity:0.5;}
+    
+    .cal-day-num{
+      font-size:12px;
+      font-weight:600;
+      color:var(--gray-900);
+      margin-bottom:4px;
+    }
+    
+    .cal-day.hoje .cal-day-num{
+      background:var(--primary);
+      color:#fff;
+      width:24px;
+      height:24px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    
+    .cal-bar{
+      height:6px;
+      border-radius:3px;
+      margin:2px 0;
+    }
+    
+    .cal-bar.entrada{background:var(--success);}
+    .cal-bar.saida{background:var(--danger);}
+    
+    .cal-saldo{
+      font-size:11px;
+      font-weight:600;
+      margin-top:4px;
+    }
+    
+    /* Lista de lançamentos */
+    .entry-list{max-height:500px;overflow-y:auto;}
+    .entry{
+      display:flex;
+      align-items:center;
+      padding:12px;
+      border-bottom:1px solid var(--gray-100);
+      cursor:pointer;
+      transition:background 0.2s;
+    }
+    .entry:hover{background:var(--gray-50);}
+    .entry-main{flex:1;margin-left:10px;}
+    .entry-title{font-weight:500;margin-bottom:3px;}
+    .entry-meta{font-size:11px;color:var(--gray-600);}
+    .entry-value{font-weight:600;font-size:15px;}
+  </style>
+</head>
+<body>
+  
+  <div class="app">
+    
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="logo">
+        <div class="logo-title">MK Gestão</div>
+        <div class="logo-sub">Financeiro Ecommerce</div>
+      </div>
+      
+      <ul class="nav-menu">
+        <li class="nav-item active" onclick="nav('dashboard')">📊 Dashboard</li>
+        <li class="nav-item" onclick="nav('calendario')">📅 Calendário</li>
+        <li class="nav-item" onclick="nav('planilha')">📋 Planilha</li>
+        <li class="nav-item" onclick="nav('pagar')">💰 Contas a pagar</li>
+        <li class="nav-item" onclick="nav('receber')">💵 A receber ML</li>
+        <li class="nav-item" onclick="nav('simulador')">🎯 Simulador</li>
+        <li class="nav-item" onclick="nav('skus')">📦 SKUs / Custos</li>
+        <li class="nav-item" onclick="nav('config')">⚙️ Configurações</li>
+      </ul>
+    </div>
+    
+    <!-- MAIN CONTENT -->
+    <div class="main">
+      
+      <!-- DASHBOARD -->
+      <div id="view-dashboard" class="view active">
+        <h1 style="margin-bottom:20px;">Dashboard Financeiro</h1>
+        
+        <!-- Score -->
+        <div class="card">
+          <div class="card-body text-center">
+            <div class="score-gauge">
+              <div class="score-arc">
+                <svg viewBox="0 0 200 200">
+                  <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#fee2e2" stroke-width="20" stroke-linecap="round"/>
+                  <path d="M 20 100 A 80 80 0 0 0 100 20" fill="none" stroke="#fef3c7" stroke-width="20" stroke-linecap="round"/>
+                  <path d="M 100 20 A 80 80 0 0 1 180 100" fill="none" stroke="#d1fae5" stroke-width="20" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div class="score-needle" id="score-needle"></div>
+              <div class="score-center"></div>
+            </div>
+            <div class="score-value" id="score-value">—</div>
+            <div class="score-label">Score Financeiro</div>
+          </div>
+        </div>
+        
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card success">
+            <div class="stat-label">Quanto posso comprar hoje</div>
+            <div class="stat-value text-success" id="stat-comprar">—</div>
+          </div>
+          
+          <div class="stat-card warning">
+            <div class="stat-label">Pior saldo projetado (30d)</div>
+            <div class="stat-value text-warning" id="stat-pior">—</div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-label">Saldo disponível</div>
+            <div class="stat-value" id="stat-saldo">—</div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-label">Cobertura de caixa</div>
+            <div class="stat-value" id="stat-cobertura">— dias</div>
+          </div>
+        </div>
+        
+        <!-- Resumo período -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Resumo dos próximos 30 dias</div>
+          </div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;">
+              <div>
+                <div class="text-muted mb-1">Entradas confirmadas ML</div>
+                <div style="font-size:20px;font-weight:600;color:var(--success);" id="resumo-entrada">—</div>
+              </div>
+              <div>
+                <div class="text-muted mb-1">Total a pagar</div>
+                <div style="font-size:20px;font-weight:600;color:var(--danger);" id="resumo-pagar">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- CALENDÁRIO -->
+      <div id="view-calendario" class="view">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <h1>Calendário Financeiro</h1>
+          <div class="d-flex gap-1">
+            <button class="btn-out btn-sm" id="cal-toggle-conf" onclick="toggleCalendario('confirmado')">Confirmado</button>
+            <button class="btn-out btn-sm" id="cal-toggle-proj" onclick="toggleCalendario('projetado')">Conf. + Projetado</button>
+          </div>
+        </div>
+        
+        <!-- Navegação mês -->
+        <div class="card mb-2">
+          <div class="card-body">
+            <div class="d-flex gap-1" style="justify-content:center;align-items:center;">
+              <button class="btn-out btn-sm" onclick="navegarMes(-1)">◀</button>
+              <div id="cal-mes-label" style="min-width:200px;text-align:center;font-weight:600;font-size:15px;">Maio 2026</div>
+              <button class="btn-out btn-sm" onclick="navegarMes(1)">▶</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Grade do calendário -->
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <div id="calendario-grid"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- PLANILHA -->
+      <div id="view-planilha" class="view">
+        <h1 style="margin-bottom:20px;">Planilha 30 dias</h1>
+        
+        <div class="card">
+          <div class="card-header">
+            <div>Fluxo de Caixa Projetado</div>
+            <div class="d-flex gap-1">
+              <button class="btn-out btn-sm" id="plan-toggle-conf" onclick="togglePlanilha('confirmado')">Confirmado</button>
+              <button class="btn-out btn-sm" id="plan-toggle-proj" onclick="togglePlanilha('projetado')">Confirmado + Projetado</button>
+            </div>
+          </div>
+          <div class="card-body" style="overflow-x:auto;">
+            <table id="table-planilha">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Dia</th>
+                  <th>Entrada Conf. ML</th>
+                  <th>Projeção Compl.</th>
+                  <th>Total Entrada</th>
+                  <th>A Pagar</th>
+                  <th>Saldo Dia</th>
+                  <th>Saldo Acum.</th>
+                  <th>Cobertura</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-planilha"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- CONTAS A PAGAR -->
+      <div id="view-pagar" class="view">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <h1>Contas a Pagar</h1>
+          <div class="d-flex gap-1">
+            <button class="btn" onclick="abrirModalLanc()">+ Novo</button>
+            <button class="btn-out" onclick="exportarCSV()">📥 Exportar CSV</button>
+          </div>
+        </div>
+        
+        <!-- Filtros -->
+        <div class="card mb-2">
+          <div class="card-body">
+            <div class="d-flex gap-1" style="flex-wrap:wrap;">
+              <input type="text" id="filtro-busca" placeholder="🔍 Buscar..." style="max-width:300px;" oninput="renderPagar()">
+              
+              <select id="filtro-periodo" onchange="renderPagar()">
+                <option value="mes">No mês (30d)</option>
+                <option value="semana">Na semana (7d)</option>
+                <option value="dia">No dia</option>
+                <option value="todos">Todos</option>
+              </select>
+              
+              <select id="filtro-status" onchange="renderPagar()">
+                <option value="abertas">Em aberto</option>
+                <option value="todas">Todas</option>
+                <option value="pagas">Pagas</option>
+                <option value="atrasado">Atrasado</option>
+              </select>
+              
+              <select id="filtro-cat" onchange="renderPagar()">
+                <option value="">Todas categorias</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Lista -->
+        <div class="card">
+          <div class="card-header">
+            <div>Total: <span id="total-filtrado" class="text-danger">R$ 0,00</span></div>
+          </div>
+          <div id="lista-pagar" class="entry-list"></div>
+        </div>
+      </div>
+      
+      <!-- A RECEBER ML -->
+      <div id="view-receber" class="view">
+        <h1 style="margin-bottom:20px;">A Receber — Mercado Livre</h1>
+
+        <!-- Resumo -->
+        <div class="stats-grid">
+          <div class="stat-card success">
+            <div class="stat-label">Total confirmado ML</div>
+            <div class="stat-value text-success" id="rec-total">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Próximos 7 dias</div>
+            <div class="stat-value" id="rec-7d">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Próximos 30 dias</div>
+            <div class="stat-value" id="rec-30d">—</div>
+          </div>
+        </div>
+
+        <!-- Sincronização ML -->
+        <div class="card mb-2">
+          <div class="card-header"><div class="card-title">🔄 Sincronização Mercado Livre</div></div>
+          <div class="card-body">
+            <button class="btn" onclick="atualizarML()">⚡ Atualizar do ML</button>
+            <div id="ml-status" style="margin-top:10px;font-size:12px;color:#666;"></div>
+            <div style="margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;">
+              <div style="font-size:11px;font-weight:600;margin-bottom:6px;">Comando PowerShell:</div>
+              <code id="ml-cmd" style="font-size:10px;display:block;padding:8px;background:#fff;border:1px solid #e5e5e5;border-radius:4px;word-break:break-all;white-space:pre-wrap;"></code>
+              <button class="btn-out btn-sm" onclick="copiarCmdML()" style="margin-top:8px;">📋 Copiar comando</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lista de liberações -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Liberações agendadas</div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Dia</th>
+                  <th style="text-align:right;">Valor</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-receber"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- SIMULADOR -->
+      <div id="view-simulador" class="view">
+        <h1 style="margin-bottom:20px;">Simulador de Compras</h1>
+        
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Simular Compra</div>
+          </div>
+          <div class="card-body">
+            
+            <!-- Tipo -->
+            <div class="form-group">
+              <label class="form-label">Tipo de Pagamento</label>
+              <div class="d-flex gap-1">
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                  <input type="radio" name="sim-tipo" value="vista" checked onchange="tipoSimulador=this.value;renderFormSimulador()"> À vista
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                  <input type="radio" name="sim-tipo" value="parcelado" onchange="tipoSimulador=this.value;renderFormSimulador()"> Parcelado
+                </label>
+              </div>
+            </div>
+            
+            <!-- Form -->
+            <div id="form-simulador">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Valor (R$)</label>
+                  <input type="number" id="sim-valor" step="0.01" placeholder="Deixe vazio para calcular">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Data de Pagamento</label>
+                  <input type="date" id="sim-data" placeholder="Deixe vazio para calcular">
+                </div>
+              </div>
+              
+              <div id="sim-parcelado" style="display:none;">
+                <div class="form-group">
+                  <label class="form-label">Opção de Parcelamento</label>
+                  <select id="sim-parcelas">
+                    <option value="30,60">2x (30/60 dias)</option>
+                    <option value="30,60,90">3x (30/60/90 dias)</option>
+                    <option value="15,30">2x (15/30 dias)</option>
+                    <option value="15,30,45">3x (15/30/45 dias)</option>
+                  </select>
+                </div>
+              </div>
+              
+              <button class="btn" onclick="simular()" style="width:100%;margin-top:10px;">🎯 Simular</button>
+            </div>
+            
+            <!-- Resultado -->
+            <div id="sim-resultado" style="margin-top:20px;"></div>
+            
+          </div>
+        </div>
+      </div>
+      
+      <!-- SKUS -->
+      <div id="view-skus" class="view">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <h1>SKUs / Custos</h1>
+          <div class="d-flex gap-1">
+            <button class="btn" onclick="abrirModalSKU()">+ Novo SKU</button>
+            <button class="btn-out" onclick="document.getElementById('import-skus-csv').click()">📤 Importar CSV</button>
+            <button class="btn-out" onclick="exportarSKUs()">📥 Exportar CSV</button>
+            <input type="file" id="import-skus-csv" accept=".csv" style="display:none" onchange="importarSKUs()">
+          </div>
+        </div>
+        
+        <!-- Busca e ações -->
+        <div class="card mb-2">
+          <div class="card-body">
+            <div class="d-flex gap-1">
+              <input type="text" id="filtro-sku" placeholder="🔍 Buscar SKU..." style="flex:1;" oninput="renderSKUs()">
+              <button class="btn-out" onclick="abrirModalImpostoLote()">🔄 Atualizar imposto em lote</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tabela -->
+        <div class="card">
+          <div class="card-body" style="overflow-x:auto;padding:0;">
+            <table>
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Custo (R$)</th>
+                  <th>Imposto (%)</th>
+                  <th>Custo Total (R$)</th>
+                  <th style="width:100px;text-align:center;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-skus"></tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div id="skus-vazio" class="alert alert-info" style="display:none;margin-top:20px;">
+          Nenhum SKU cadastrado. Importe um CSV ou adicione manualmente.
+        </div>
+      </div>
+      
+      <!-- CONFIGURAÇÕES -->
+      <div id="view-config" class="view">
+        <h1 style="margin-bottom:20px;">Configurações</h1>
+        
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Parâmetros Financeiros</div>
+          </div>
+          <div class="card-body">
+            
+            <!-- Delay -->
+            <div class="form-group">
+              <label class="form-label">Delay / Zona Confirmada</label>
+              <div class="text-muted mb-1" style="font-size:11px;">Delay calculado: <span id="delay-calc">— dias</span></div>
+              <div class="d-flex gap-1" style="align-items:center;">
+                <input type="range" min="7" max="60" value="12" id="range-delay" style="flex:1;" oninput="cfgDelay=+this.value;document.getElementById('input-delay').value=this.value;document.getElementById('val-delay').textContent=this.value+' dias';salvarCfg();recalc()">
+                <input type="number" min="7" max="60" value="12" id="input-delay" style="width:80px;" oninput="cfgDelay=+this.value;document.getElementById('range-delay').value=this.value;document.getElementById('val-delay').textContent=this.value+' dias';salvarCfg();recalc()">
+              </div>
+              <div id="val-delay" class="text-muted" style="font-size:12px;margin-top:4px;">12 dias</div>
+            </div>
+            
+            <!-- % Projeção -->
+            <div class="form-group">
+              <label class="form-label">% Aproveitamento da Projeção</label>
+              <input type="range" min="50" max="100" value="85" id="range-pct" oninput="cfgPct=this.value/100;document.getElementById('val-pct').textContent=this.value+'%';salvarCfg();recalc()">
+              <div id="val-pct" class="text-muted" style="font-size:12px;margin-top:4px;">85%</div>
+            </div>
+            
+            <!-- Reserva Mínima -->
+            <div class="form-group">
+              <label class="form-label">Reserva Mínima de Segurança (R$)</label>
+              <input type="number" id="input-reserva" value="15000" step="1000" onchange="reservaMinima=+this.value;salvarCfg();recalc()">
+              <div class="text-muted" style="font-size:11px;margin-top:4px;">Saldo mínimo para operar com segurança</div>
+            </div>
+            
+            <!-- Período Histórico -->
+            <div class="form-group">
+              <label class="form-label">Período Histórico para Média</label>
+              <input type="range" min="7" max="365" value="30" id="range-hist" oninput="periodoHistorico=+this.value;document.getElementById('val-hist').textContent=this.value+' dias';salvarCfg();recalc()">
+              <div id="val-hist" class="text-muted" style="font-size:12px;margin-top:4px;">30 dias</div>
+            </div>
+            
+          </div>
+        </div>
+        
+        <!-- Backup -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Backup / Restore</div>
+          </div>
+          <div class="card-body">
+            <div class="d-flex gap-1">
+              <button class="btn-out" onclick="exportarTudo()">📥 Exportar tudo (JSON)</button>
+              <button class="btn-out" onclick="document.getElementById('import-json').click()">📤 Importar JSON</button>
+              <input type="file" id="import-json" accept=".json" style="display:none" onchange="importarTudo()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Categorias -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Categorias de Despesa</div>
+            <button class="btn btn-sm" onclick="adicionarCategoria()">+ Nova</button>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th style="text-align:center;">Impacta DRE</th>
+                  <th style="text-align:center;width:80px;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-categorias"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Import Tiny -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">📊 Importar XLS Tiny ERP</div></div>
+          <div class="card-body">
+            <p style="font-size:12px;color:#666;margin-bottom:10px;">Formato do Tiny: Vencimento, Fornecedor, Histórico, Valor</p>
+            <input type="file" id="tiny-xls" accept=".xls,.xlsx" onchange="importarTinyXLS()">
+            <div id="tiny-status" style="font-size:12px;margin-top:8px;"></div>
+          </div>
+        </div>
+
+      </div>
+      
+    </div>
+    
+  </div>
+  
+  <!-- MODAL LANÇAMENTO -->
+  <div class="modal" id="modal-lanc">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-lanc-title">Novo Lançamento</div>
+        <button class="btn-out btn-sm" onclick="fecharModal('modal-lanc')">✕</button>
+      </div>
+      
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('unico')">Único</div>
+        <div class="tab" onclick="switchTab('parcelado')">Parcelado</div>
+        <div class="tab" onclick="switchTab('recorrente')">Recorrente</div>
+      </div>
+      
+      <div class="modal-body">
+        
+        <!-- Form Único -->
+        <div id="form-unico">
+          <div class="form-group">
+            <label class="form-label">Descrição</label>
+            <input type="text" id="lanc-desc">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Fornecedor</label>
+            <input type="text" id="lanc-forn">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Valor (R$)</label>
+              <input type="number" id="lanc-val" step="0.01">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Vencimento</label>
+              <input type="date" id="lanc-data">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Categoria</label>
+            <select id="lanc-cat"></select>
+          </div>
+          
+          <div class="form-group">
+            <label><input type="checkbox" id="lanc-pago"> Marcar como pago</label>
+          </div>
+          
+        </div>
+        
+        <!-- Form Parcelado -->
+        <div id="form-parcelado" style="display:none;">
+          <div class="alert alert-info">Em desenvolvimento</div>
+        </div>
+        
+        <!-- Form Recorrente -->
+        <div id="form-recorrente" style="display:none;">
+          <div class="alert alert-info">Em desenvolvimento</div>
+        </div>
+        
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn" onclick="salvarLanc()">Salvar</button>
+        <button class="btn-out" onclick="fecharModal('modal-lanc')">Cancelar</button>
+        <button class="btn-del" id="btn-del-lanc" style="display:none;margin-right:auto;" onclick="deletarLanc()">Deletar</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- MODAL SKU -->
+  <div class="modal" id="modal-sku">
+    <div class="modal-content" style="max-width:400px;">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-sku-title">Novo SKU</div>
+        <button class="btn-out btn-sm" onclick="fecharModal('modal-sku')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Código SKU</label>
+          <input type="text" id="sku-codigo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Custo (R$)</label>
+          <input type="number" id="sku-custo" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Imposto (%)</label>
+          <input type="number" id="sku-imposto" step="0.01" value="6.18">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="salvarSKU()">Salvar</button>
+        <button class="btn-out" onclick="fecharModal('modal-sku')">Cancelar</button>
+        <button class="btn-del" id="btn-del-sku" style="display:none;margin-right:auto;" onclick="deletarSKU()">Deletar</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- MODAL IMPOSTO LOTE -->
+  <div class="modal" id="modal-imposto-lote">
+    <div class="modal-content" style="max-width:400px;">
+      <div class="modal-header">
+        <div class="modal-title">Atualizar Imposto em Lote</div>
+        <button class="btn-out btn-sm" onclick="fecharModal('modal-imposto-lote')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Novo % de Imposto</label>
+          <input type="number" id="imposto-lote" step="0.01" value="6.18">
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" id="imposto-todos" checked> Aplicar a todos os SKUs</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="aplicarImpostoLote()">Aplicar</button>
+        <button class="btn-out" onclick="fecharModal('modal-imposto-lote')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // ===== ESTADO GLOBAL =====
+    let pagamentos = [];
+    let liberacoes = [];
+    let skus = [];
+    let categorias = [];
+    
+    // Configurações
+    let cfgDelay = 12;
+    let cfgPct = 0.85;
+    let reservaMinima = 15000;
+    let periodoHistorico = 30;
+    
+    // Estado UI
+    let planilhaMode = 'confirmado';
+    let calendarioMode = 'confirmado';
+    let mesAtual = new Date();
+    let tipoSimulador = 'vista';
+    let editandoIdx = null;
+    let editandoIdxSKU = null;
+    let tabAtual = 'unico';
+    
+    // ===== DADOS DE EXEMPLO =====
+    function carregarDadosExemplo(){
+      // Categorias padrão
+      categorias = [
+        {nome:'Fornecedor',impactaDRE:true},
+        {nome:'Imposto',impactaDRE:true},
+        {nome:'Pró-labore',impactaDRE:true},
+        {nome:'Salário',impactaDRE:true},
+        {nome:'Aluguel',impactaDRE:true},
+        {nome:'ADS/Marketing',impactaDRE:true},
+        {nome:'Capital de Giro - Amortização',impactaDRE:false},
+        {nome:'Capital de Giro - Juros',impactaDRE:true},
+        {nome:'Outro',impactaDRE:true}
+      ];
+      
+      // Liberações ML exemplo (próximos 15 dias)
+      const hoje = new Date();
+      for(let i=1; i<=15; i++){
+        const d = new Date(hoje);
+        d.setDate(d.getDate() + i);
+        liberacoes.push({
+          data: dateStr(d),
+          val: 1000 + Math.random() * 2000
+        });
+      }
+      
+      // Pagamentos exemplo
+      for(let i=1; i<=10; i++){
+        const d = new Date(hoje);
+        d.setDate(d.getDate() + (i * 3));
+        pagamentos.push({
+          desc: 'Fornecedor ' + String.fromCharCode(64 + i),
+          forn: 'Fornecedor ' + String.fromCharCode(64 + i),
+          val: 500 + Math.random() * 1500,
+          data: dateStr(d),
+          cat: categorias[Math.floor(Math.random() * 3)].nome,
+          pago: false,
+          tipo: 'unico'
+        });
+      }
+    }
+    
+    // ===== UTILS =====
+    function getToday(){
+      const d = new Date();
+      return dateStr(d);
+    }
+    
+    function dateStr(d){
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+    
+    function parseDate(str){
+      const [y,m,d] = str.split('-').map(Number);
+      return new Date(y, m-1, d);
+    }
+    
+    function ptDate(str){
+      const [y,m,d] = str.split('-');
+      return `${d}/${m}/${y}`;
+    }
+    
+    function fmt(n){
+      return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+    
+    function diasDif(data1, data2){
+      const d1 = parseDate(data1);
+      const d2 = parseDate(data2);
+      return Math.floor((d2 - d1) / 86400000);
+    }
+    
+    function addDias(data, dias){
+      const d = parseDate(data);
+      d.setDate(d.getDate() + dias);
+      return dateStr(d);
+    }
+    
+    function nomeDia(data){
+      const d = parseDate(data);
+      const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      return dias[d.getDay()];
+    }
+    
+    // ===== CÁLCULOS =====
+    function getEntrada(data){
+      // Entrada confirmada ML
+      const conf = liberacoes.filter(l => l.data === data).reduce((s,l) => s + l.val, 0);
+      
+      // Projeção complementar (após delay)
+      let proj = 0;
+      const hoje = getToday();
+      const diasAteData = diasDif(hoje, data);
+      
+      if(diasAteData > cfgDelay){
+        // Calcular média
+        const limiteHist = addDias(hoje, -periodoHistorico);
+        const libHist = liberacoes.filter(l => l.data >= limiteHist && l.data < hoje);
+        const media = libHist.length > 0 ? libHist.reduce((s,l) => s + l.val, 0) / libHist.length : 1000;
+        proj = media * cfgPct;
+      }
+      
+      return {conf, proj, total: conf + proj};
+    }
+    
+    function getPag(data){
+      return pagamentos.filter(p => p.data === data && !p.pago).reduce((s,p) => s + p.val, 0);
+    }
+    
+    function calcScore(){
+      // Saldo atual (simplificado - assume saldo inicial)
+      const saldo = reservaMinima * 2; // Mock
+      
+      // Média de gastos diários
+      const hoje = getToday();
+      const limite = addDias(hoje, -30);
+      const pagos = pagamentos.filter(p => p.pago && p.data >= limite);
+      const totalPago = pagos.reduce((s,p) => s + (p.valorPago || p.val), 0);
+      const mediaGasto = totalPago / 30;
+      
+      // Dias de cobertura
+      const dias = mediaGasto > 0 ? saldo / mediaGasto : 30;
+      
+      // Score 0-100
+      const score = Math.min(100, Math.round((dias / 30) * 100));
+      
+      return score;
+    }
+    
+    function calcMaxCompra(){
+      // Simplificado - retorna mock
+      return 5000;
+    }
+    
+    function calcPiorSaldo(){
+      const hoje = getToday();
+      let saldo = reservaMinima * 2;
+      let pior = saldo;
+      
+      for(let i=0; i<30; i++){
+        const data = addDias(hoje, i);
+        const e = getEntrada(data);
+        const entrada = planilhaMode === 'confirmado' ? e.conf : e.total;
+        const pag = getPag(data);
+        
+        saldo += entrada - pag;
+        if(saldo < pior) pior = saldo;
+      }
+      
+      return pior;
+    }
+    
+    // ===== NAVEGAÇÃO =====
+    function nav(page){
+      // Remover active de todos
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      
+      // Ativar página
+      document.getElementById('view-' + page).classList.add('active');
+      document.querySelector(`[onclick="nav('${page}')"]`).classList.add('active');
+      
+      // Renderizar
+      if(page === 'dashboard') renderDashboard();
+      else if(page === 'planilha') renderPlanilha();
+      else if(page === 'pagar') renderPagar();
+      else if(page === 'calendario') renderCalendario();
+      else if(page === 'simulador') renderFormSimulador();
+      else if(page === 'skus') renderSKUs();
+      else if(page === 'receber') renderReceber();
+      else if(page === 'config') renderCategorias();
+    }
+    
+    // ===== RENDERS =====
+    function renderDashboard(){
+      // Score
+      const score = calcScore();
+      document.getElementById('score-value').textContent = score;
+      
+      // Ponteiro (0-100 → 0-180 graus)
+      const graus = score * 1.8;
+      const needle = document.getElementById('score-needle');
+      needle.style.transform = `rotate(${graus - 90}deg)`;
+      
+      // Stats
+      document.getElementById('stat-comprar').textContent = fmt(calcMaxCompra());
+      document.getElementById('stat-pior').textContent = fmt(calcPiorSaldo());
+      document.getElementById('stat-saldo').textContent = fmt(reservaMinima * 2);
+      document.getElementById('stat-cobertura').textContent = '15 dias'; // Mock
+      
+      // Resumo
+      const hoje = getToday();
+      let totalEntrada = 0, totalPagar = 0;
+      
+      for(let i=0; i<30; i++){
+        const data = addDias(hoje, i);
+        totalEntrada += getEntrada(data).conf;
+        totalPagar += getPag(data);
+      }
+      
+      document.getElementById('resumo-entrada').textContent = fmt(totalEntrada);
+      document.getElementById('resumo-pagar').textContent = fmt(totalPagar);
+    }
+    
+    function renderPlanilha(){
+      const tbody = document.getElementById('tbody-planilha');
+      const hoje = getToday();
+      let saldoAcum = reservaMinima * 2;
+      let html = '';
+      
+      // Atualizar botões
+      document.getElementById('plan-toggle-conf').className = 'btn-out btn-sm' + (planilhaMode === 'confirmado' ? ' active' : '');
+      document.getElementById('plan-toggle-proj').className = 'btn-out btn-sm' + (planilhaMode === 'projetado' ? ' active' : '');
+      
+      for(let i=0; i<30; i++){
+        const data = addDias(hoje, i);
+        const dia = nomeDia(data);
+        const e = getEntrada(data);
+        const entrada = planilhaMode === 'confirmado' ? e.conf : e.total;
+        const pag = getPag(data);
+        const saldoDia = entrada - pag;
+        saldoAcum += saldoDia;
+        
+        const cobertura = saldoAcum / (pag || 100);
+        
+        const corSaldo = saldoAcum < reservaMinima ? 'text-danger' : '';
+        
+        html += `<tr>
+          <td>${ptDate(data)}</td>
+          <td>${dia}</td>
+          <td>${fmt(e.conf)}</td>
+          <td>${fmt(e.proj)}</td>
+          <td>${fmt(entrada)}</td>
+          <td>${fmt(pag)}</td>
+          <td class="${saldoDia < 0 ? 'text-danger' : 'text-success'}">${fmt(saldoDia)}</td>
+          <td class="${corSaldo}">${fmt(saldoAcum)}</td>
+          <td>${Math.round(cobertura)} dias</td>
+        </tr>`;
+      }
+      
+      tbody.innerHTML = html;
+    }
+    
+    function renderPagar(){
+      const lista = document.getElementById('lista-pagar');
+      const busca = document.getElementById('filtro-busca').value.toLowerCase();
+      const periodo = document.getElementById('filtro-periodo').value;
+      const status = document.getElementById('filtro-status').value;
+      const cat = document.getElementById('filtro-cat').value;
+      
+      const hoje = getToday();
+      
+      // Filtrar
+      let filtrados = pagamentos.filter(p => {
+        // Busca
+        if(busca && !p.desc.toLowerCase().includes(busca) && 
+           !p.forn.toLowerCase().includes(busca)) return false;
+        
+        // Período
+        if(periodo === 'dia' && p.data !== hoje) return false;
+        if(periodo === 'semana' && diasDif(hoje, p.data) > 7) return false;
+        if(periodo === 'mes' && diasDif(hoje, p.data) > 30) return false;
+        
+        // Status
+        if(status === 'abertas' && p.pago) return false;
+        if(status === 'pagas' && !p.pago) return false;
+        if(status === 'atrasado' && (p.pago || p.data >= hoje)) return false;
+        
+        // Categoria
+        if(cat && p.cat !== cat) return false;
+        
+        return true;
+      });
+      
+      // Ordenar por data
+      filtrados.sort((a,b) => a.data.localeCompare(b.data));
+      
+      // Total
+      const total = filtrados.filter(p => !p.pago).reduce((s,p) => s + p.val, 0);
+      document.getElementById('total-filtrado').textContent = fmt(total);
+      
+      // Renderizar
+      if(filtrados.length === 0){
+        lista.innerHTML = '<div style="padding:40px;text-align:center;color:#999;">Nenhuma conta encontrada</div>';
+        return;
+      }
+      
+      let html = '';
+      filtrados.forEach((p, i) => {
+        const idx = pagamentos.indexOf(p);
+        const isAtrasado = !p.pago && p.data < hoje;
+        const badge = p.pago ? '<span class="badge badge-success">Pago</span>' : 
+                      isAtrasado ? '<span class="badge badge-danger">Atrasado</span>' : 
+                      '<span class="badge badge-warning">Em aberto</span>';
+        
+        html += `<div class="entry" onclick="editarLanc(${idx})">
+          <input type="checkbox" onclick="event.stopPropagation()">
+          <div class="entry-main">
+            <div class="entry-title">${p.desc}</div>
+            <div class="entry-meta">${ptDate(p.data)} • ${p.forn || 'Sem fornecedor'} • ${p.cat}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="entry-value">${fmt(p.val)}</div>
+            ${badge}
+          </div>
+        </div>`;
+      });
+      
+      lista.innerHTML = html;
+    }
+    
+    function renderCalendario(){
+      const grid = document.getElementById('calendario-grid');
+      const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      
+      // Atualizar label do mês
+      document.getElementById('cal-mes-label').textContent = meses[mesAtual.getMonth()] + ' ' + mesAtual.getFullYear();
+      
+      // Atualizar botões toggle
+      document.getElementById('cal-toggle-conf').className = 'btn-out btn-sm' + (calendarioMode === 'confirmado' ? ' active' : '');
+      document.getElementById('cal-toggle-proj').className = 'btn-out btn-sm' + (calendarioMode === 'projetado' ? ' active' : '');
+      
+      // Primeiro dia do mês
+      const primeiroDia = new Date(mesAtual.getFullYear(), mesAtual.getMonth(), 1);
+      const diaSemana = primeiroDia.getDay(); // 0=dom, 1=seg...
+      
+      // Último dia do mês
+      const ultimoDia = new Date(mesAtual.getFullYear(), mesAtual.getMonth() + 1, 0);
+      const diasNoMes = ultimoDia.getDate();
+      
+      // Dias do mês anterior para preencher
+      const diasAnteriores = diaSemana;
+      
+      // Construir HTML
+      let html = '<div class="cal-grid">';
+      
+      // Headers
+      const diasSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      diasSemana.forEach(d => {
+        html += `<div class="cal-header">${d}</div>`;
+      });
+      
+      // Dias do mês anterior
+      const mesAnt = new Date(mesAtual.getFullYear(), mesAtual.getMonth(), 0);
+      const diasMesAnt = mesAnt.getDate();
+      
+      for(let i = diasAnteriores - 1; i >= 0; i--){
+        const dia = diasMesAnt - i;
+        html += `<div class="cal-day outro-mes"><div class="cal-day-num">${dia}</div></div>`;
+      }
+      
+      // Dias do mês atual
+      const hoje = getToday();
+      
+      for(let dia = 1; dia <= diasNoMes; dia++){
+        const data = dateStr(new Date(mesAtual.getFullYear(), mesAtual.getMonth(), dia));
+        const isHoje = data === hoje;
+        
+        // Calcular valores do dia
+        const e = getEntrada(data);
+        const entrada = calendarioMode === 'confirmado' ? e.conf : e.total;
+        const pag = getPag(data);
+        const saldo = entrada - pag;
+        
+        // Calcular alturas das barras (proporcionais ao maior valor)
+        const maxVal = Math.max(entrada, pag, 1000);
+        const alturaEntrada = Math.round((entrada / maxVal) * 40);
+        const alturaSaida = Math.round((pag / maxVal) * 40);
+        
+        html += `<div class="cal-day ${isHoje ? 'hoje' : ''}">
+          <div class="cal-day-num">${dia}</div>
+          ${entrada > 0 ? `<div class="cal-bar entrada" style="height:${alturaEntrada}px;"></div>` : ''}
+          ${pag > 0 ? `<div class="cal-bar saida" style="height:${alturaSaida}px;"></div>` : ''}
+          ${entrada > 0 || pag > 0 ? `<div class="cal-saldo ${saldo >= 0 ? 'text-success' : 'text-danger'}">${fmt(saldo)}</div>` : ''}
+        </div>`;
+      }
+      
+      // Dias do próximo mês
+      const totalDias = diasAnteriores + diasNoMes;
+      const diasRestantes = 35 - totalDias; // 5 linhas × 7 dias = 35
+      
+      for(let dia = 1; dia <= diasRestantes; dia++){
+        html += `<div class="cal-day outro-mes"><div class="cal-day-num">${dia}</div></div>`;
+      }
+      
+      html += '</div>';
+      grid.innerHTML = html;
+    }
+    
+    function toggleCalendario(mode){
+      calendarioMode = mode;
+      renderCalendario();
+    }
+    
+    function navegarMes(direcao){
+      mesAtual.setMonth(mesAtual.getMonth() + direcao);
+      renderCalendario();
+    }
+    
+    function renderFormSimulador(){
+      document.getElementById('sim-parcelado').style.display = tipoSimulador === 'parcelado' ? 'block' : 'none';
+    }
+    
+    function simular(){
+      const valor = parseFloat(document.getElementById('sim-valor').value) || 0;
+      const data = document.getElementById('sim-data').value;
+      const resultado = document.getElementById('sim-resultado');
+      
+      // Caso 1: Só valor → encontrar melhor data
+      if(valor > 0 && !data){
+        const melhorData = encontrarMelhorData(valor);
+        if(melhorData){
+          resultado.innerHTML = `<div class="alert alert-info">
+            ✅ Melhor data para pagar <strong>${fmt(valor)}</strong>: <strong>${ptDate(melhorData)}</strong>
+            <div style="margin-top:8px;font-size:12px;">Saldo mínimo após pagamento: ${fmt(simularSaldo(valor, melhorData))}</div>
+          </div>`;
+        } else {
+          resultado.innerHTML = `<div class="alert alert-danger">
+            ❌ Não é viável pagar ${fmt(valor)} nos próximos 30 dias com o fluxo atual.
+          </div>`;
+        }
+        return;
+      }
+      
+      // Caso 2: Só data → calcular quanto pode pagar
+      if(!valor && data){
+        const maxPagar = calcularMaxPagar(data);
+        resultado.innerHTML = `<div class="alert alert-info">
+          ✅ Você pode pagar até <strong>${fmt(maxPagar)}</strong> em <strong>${ptDate(data)}</strong>
+          <div style="margin-top:8px;font-size:12px;">Mantendo saldo acima da reserva mínima (${fmt(reservaMinima)})</div>
+        </div>`;
+        return;
+      }
+      
+      // Caso 3: Valor + data → verificar viabilidade
+      if(valor > 0 && data){
+        const saldoFinal = simularSaldo(valor, data);
+        const viavel = saldoFinal >= reservaMinima;
+        
+        if(viavel){
+          resultado.innerHTML = `<div class="alert alert-info">
+            ✅ Compra VIÁVEL! Saldo após pagamento: <strong class="text-success">${fmt(saldoFinal)}</strong>
+          </div>`;
+        } else {
+          resultado.innerHTML = `<div class="alert alert-warning">
+            ⚠️ Compra ARRISCADA. Saldo cairia para: <strong class="text-danger">${fmt(saldoFinal)}</strong>
+            <div style="margin-top:8px;font-size:12px;">Abaixo da reserva mínima (${fmt(reservaMinima)})</div>
+          </div>`;
+        }
+        return;
+      }
+      
+      resultado.innerHTML = `<div class="alert alert-warning">Preencha pelo menos um campo (valor ou data)</div>`;
+    }
+    
+    function encontrarMelhorData(valor){
+      const hoje = getToday();
+      
+      for(let i=0; i<30; i++){
+        const data = addDias(hoje, i);
+        const saldo = simularSaldo(valor, data);
+        if(saldo >= reservaMinima){
+          return data;
+        }
+      }
+      
+      return null;
+    }
+    
+    function calcularMaxPagar(data){
+      let min = 0, max = 100000, resultado = 0;
+      
+      while(min <= max){
+        const meio = Math.floor((min + max) / 2);
+        const saldo = simularSaldo(meio, data);
+        
+        if(saldo >= reservaMinima){
+          resultado = meio;
+          min = meio + 1;
+        } else {
+          max = meio - 1;
+        }
+      }
+      
+      return resultado;
+    }
+    
+    function simularSaldo(valor, dataPag){
+      const hoje = getToday();
+      let saldo = reservaMinima * 2; // Mock saldo inicial
+      
+      for(let i=0; i<30; i++){
+        const data = addDias(hoje, i);
+        const e = getEntrada(data);
+        const entrada = e.total; // Usa total (confirmado + projeção)
+        const pag = getPag(data);
+        
+        // Se é o dia do pagamento simulado, adiciona ao total
+        const pagDia = data === dataPag ? pag + valor : pag;
+        
+        saldo += entrada - pagDia;
+      }
+      
+      return saldo;
+    }
+    
+    function renderSKUs(){
+      const tbody = document.getElementById('tbody-skus');
+      const busca = document.getElementById('filtro-sku').value.toLowerCase();
+      const vazio = document.getElementById('skus-vazio');
+      
+      let filtrados = skus.filter(s => !busca || s.sku.toLowerCase().includes(busca));
+      
+      if(filtrados.length === 0){
+        tbody.innerHTML = '';
+        vazio.style.display = 'block';
+        return;
+      }
+      
+      vazio.style.display = 'none';
+      
+      let html = '';
+      filtrados.forEach((s, i) => {
+        const idx = skus.indexOf(s);
+        const total = s.custo + (s.custo * s.imposto / 100);
+        
+        html += `<tr>
+          <td style="font-family:monospace;font-weight:600;">${s.sku}</td>
+          <td>${fmt(s.custo)}</td>
+          <td>${s.imposto.toFixed(2)}%</td>
+          <td>${fmt(total)}</td>
+          <td style="text-align:center;">
+            <button class="btn-out btn-sm" onclick="editarSKU(${idx})">✏️</button>
+          </td>
+        </tr>`;
+      });
+      
+      tbody.innerHTML = html;
+    }
+    
+    function abrirModalSKU(){
+      editandoIdxSKU = null;
+      document.getElementById('modal-sku-title').textContent = 'Novo SKU';
+      document.getElementById('btn-del-sku').style.display = 'none';
+      
+      document.getElementById('sku-codigo').value = '';
+      document.getElementById('sku-custo').value = '';
+      document.getElementById('sku-imposto').value = '6.18';
+      
+      document.getElementById('modal-sku').classList.add('open');
+    }
+    
+    function editarSKU(idx){
+      editandoIdxSKU = idx;
+      const s = skus[idx];
+      
+      document.getElementById('modal-sku-title').textContent = 'Editar SKU';
+      document.getElementById('btn-del-sku').style.display = 'block';
+      
+      document.getElementById('sku-codigo').value = s.sku;
+      document.getElementById('sku-custo').value = s.custo;
+      document.getElementById('sku-imposto').value = s.imposto;
+      
+      document.getElementById('modal-sku').classList.add('open');
+    }
+    
+    function salvarSKU(){
+      const sku = {
+        sku: document.getElementById('sku-codigo').value.trim(),
+        custo: parseFloat(document.getElementById('sku-custo').value) || 0,
+        imposto: parseFloat(document.getElementById('sku-imposto').value) || 6.18
+      };
+      
+      if(!sku.sku || !sku.custo){
+        alert('Preencha SKU e Custo');
+        return;
+      }
+      
+      if(editandoIdxSKU !== null){
+        skus[editandoIdxSKU] = sku;
+      } else {
+        skus.push(sku);
+      }
+      
+      salvar();
+      fecharModal('modal-sku');
+      renderSKUs();
+    }
+    
+    function deletarSKU(){
+      if(!confirm('Deletar este SKU?')) return;
+      skus.splice(editandoIdxSKU, 1);
+      salvar();
+      fecharModal('modal-sku');
+      renderSKUs();
+    }
+    
+    function abrirModalImpostoLote(){
+      document.getElementById('modal-imposto-lote').classList.add('open');
+    }
+    
+    function aplicarImpostoLote(){
+      const novoImposto = parseFloat(document.getElementById('imposto-lote').value);
+      const todos = document.getElementById('imposto-todos').checked;
+      
+      if(todos){
+        skus.forEach(s => s.imposto = novoImposto);
+      } else {
+        const busca = document.getElementById('filtro-sku').value.toLowerCase();
+        skus.filter(s => !busca || s.sku.toLowerCase().includes(busca))
+          .forEach(s => s.imposto = novoImposto);
+      }
+      
+      salvar();
+      fecharModal('modal-imposto-lote');
+      renderSKUs();
+      alert('Imposto atualizado!');
+    }
+    
+    function exportarSKUs(){
+      let csv = 'sku;custo;imposto\n';
+      
+      if(skus.length === 0){
+        csv += 'SKU-EXEMPLO-001;15,50;6,18\n';
+        csv += 'SKU-EXEMPLO-002;28,90;6,18\n';
+        csv += 'SKU-EXEMPLO-003;42,00;6,18\n';
+        csv += '\n# INSTRUÇÕES:\n';
+        csv += '# - sku: código do produto\n';
+        csv += '# - custo: custo em reais (use vírgula)\n';
+        csv += '# - imposto: % de imposto (padrão 6.18)\n';
+        csv += '# - Apague exemplos e preencha com seus SKUs\n';
+      } else {
+        csv += skus.map(s => `${s.sku};${s.custo.toFixed(2).replace('.',',')};${s.imposto.toFixed(2).replace('.',',')}`).join('\n');
+      }
+      
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'skus_' + getToday() + '.csv';
+      a.click();
+    }
+    
+    function importarSKUs(){
+      const file = document.getElementById('import-skus-csv').files[0];
+      if(!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const lines = e.target.result.split('\n');
+          let count = 0;
+          
+          for(let i = 1; i < lines.length; i++){
+            const line = lines[i].trim();
+            if(!line || line.startsWith('#')) continue;
+            
+            const parts = line.split(';');
+            if(parts.length < 2) continue;
+            
+            const sku = parts[0].trim();
+            const custo = parseFloat(parts[1].replace(',','.'));
+            const imposto = parts[2] ? parseFloat(parts[2].replace(',','.')) : 6.18;
+            
+            if(!sku || isNaN(custo)) continue;
+            
+            const idx = skus.findIndex(s => s.sku === sku);
+            if(idx >= 0){
+              skus[idx] = {sku, custo, imposto};
+            } else {
+              skus.push({sku, custo, imposto});
+            }
+            count++;
+          }
+          
+          salvar();
+          renderSKUs();
+          alert(count + ' SKU(s) importado(s)!');
+        } catch(err){
+          alert('Erro ao importar: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+    
+    // ===== MODALS =====
+    function abrirModalLanc(){
+      editandoIdx = null;
+      document.getElementById('modal-lanc-title').textContent = 'Novo Lançamento';
+      document.getElementById('btn-del-lanc').style.display = 'none';
+      
+      // Limpar form
+      document.getElementById('lanc-desc').value = '';
+      document.getElementById('lanc-forn').value = '';
+      document.getElementById('lanc-val').value = '';
+      document.getElementById('lanc-data').value = '';
+      document.getElementById('lanc-pago').checked = false;
+      
+      // Popular categorias
+      const selCat = document.getElementById('lanc-cat');
+      selCat.innerHTML = categorias.map(c => `<option>${c.nome}</option>`).join('');
+      
+      switchTab('unico');
+      document.getElementById('modal-lanc').classList.add('open');
+    }
+    
+    function editarLanc(idx){
+      editandoIdx = idx;
+      const p = pagamentos[idx];
+      
+      document.getElementById('modal-lanc-title').textContent = 'Editar Lançamento';
+      document.getElementById('btn-del-lanc').style.display = 'block';
+      
+      document.getElementById('lanc-desc').value = p.desc;
+      document.getElementById('lanc-forn').value = p.forn || '';
+      document.getElementById('lanc-val').value = p.val;
+      document.getElementById('lanc-data').value = p.data;
+      document.getElementById('lanc-pago').checked = p.pago;
+      
+      const selCat = document.getElementById('lanc-cat');
+      selCat.innerHTML = categorias.map(c => `<option>${c.nome}</option>`).join('');
+      selCat.value = p.cat;
+      
+      switchTab('unico');
+      document.getElementById('modal-lanc').classList.add('open');
+    }
+    
+    function fecharModal(id){
+      document.getElementById(id).classList.remove('open');
+    }
+    
+    function switchTab(tab){
+      tabAtual = tab;
+      
+      // Tabs
+      document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.tabs .tab:nth-child(${tab==='unico'?1:tab==='parcelado'?2:3})`).classList.add('active');
+      
+      // Forms
+      document.getElementById('form-unico').style.display = tab === 'unico' ? 'block' : 'none';
+      document.getElementById('form-parcelado').style.display = tab === 'parcelado' ? 'block' : 'none';
+      document.getElementById('form-recorrente').style.display = tab === 'recorrente' ? 'block' : 'none';
+    }
+    
+    function salvarLanc(){
+      const lanc = {
+        desc: document.getElementById('lanc-desc').value,
+        forn: document.getElementById('lanc-forn').value,
+        val: parseFloat(document.getElementById('lanc-val').value),
+        data: document.getElementById('lanc-data').value,
+        cat: document.getElementById('lanc-cat').value,
+        pago: document.getElementById('lanc-pago').checked,
+        tipo: 'unico'
+      };
+      
+      if(!lanc.desc || !lanc.val || !lanc.data){
+        alert('Preencha todos os campos obrigatórios');
+        return;
+      }
+      
+      if(editandoIdx !== null){
+        pagamentos[editandoIdx] = lanc;
+      } else {
+        pagamentos.push(lanc);
+      }
+      
+      salvar();
+      fecharModal('modal-lanc');
+      renderPagar();
+      recalc();
+    }
+    
+    function deletarLanc(){
+      if(!confirm('Deletar este lançamento?')) return;
+      pagamentos.splice(editandoIdx, 1);
+      salvar();
+      fecharModal('modal-lanc');
+      renderPagar();
+      recalc();
+    }
+    
+    // ===== CONTROLES =====
+    function togglePlanilha(mode){
+      planilhaMode = mode;
+      renderPlanilha();
+    }
+    
+    function recalc(){
+      if(document.getElementById('view-dashboard').classList.contains('active')){
+        renderDashboard();
+      }
+      if(document.getElementById('view-planilha').classList.contains('active')){
+        renderPlanilha();
+      }
+    }
+    
+    // ===== STORAGE =====
+    function salvar(){
+      localStorage.setItem('mk_pagamentos', JSON.stringify(pagamentos));
+      localStorage.setItem('mk_liberacoes', JSON.stringify(liberacoes));
+      localStorage.setItem('mk_categorias', JSON.stringify(categorias));
+      salvarCfg();
+    }
+    
+    function salvarCfg(){
+      localStorage.setItem('mk_cfg', JSON.stringify({
+        cfgDelay,
+        cfgPct,
+        reservaMinima,
+        periodoHistorico
+      }));
+    }
+    
+    function carregar(){
+      // Carregar dados
+      const p = localStorage.getItem('mk_pagamentos');
+      const l = localStorage.getItem('mk_liberacoes');
+      const c = localStorage.getItem('mk_categorias');
+      const cfg = localStorage.getItem('mk_cfg');
+      
+      if(p) pagamentos = JSON.parse(p);
+      if(l) liberacoes = JSON.parse(l);
+      if(c) categorias = JSON.parse(c);
+      
+      if(cfg){
+        const obj = JSON.parse(cfg);
+        cfgDelay = obj.cfgDelay || 12;
+        cfgPct = obj.cfgPct || 0.85;
+        reservaMinima = obj.reservaMinima || 15000;
+        periodoHistorico = obj.periodoHistorico || 30;
+      }
+      
+      // Se não tem dados, carregar exemplo
+      if(pagamentos.length === 0 && liberacoes.length === 0){
+        carregarDadosExemplo();
+        salvar();
+      }
+    }
+    
+    // ===== IMPORT/EXPORT =====
+    function exportarCSV(){
+      const csv = 'data;desc;forn;val;cat;pago\n' + 
+        pagamentos.map(p => `${p.data};${p.desc};${p.forn||''};${p.val.toFixed(2).replace('.',',')};${p.cat};${p.pago?'sim':'nao'}`).join('\n');
+      
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'contas_a_pagar_' + getToday() + '.csv';
+      a.click();
+    }
+    
+    function exportarTudo(){
+      const dados = {
+        pagamentos,
+        liberacoes,
+        categorias,
+        cfg: {cfgDelay, cfgPct, reservaMinima, periodoHistorico}
+      };
+      
+      const json = JSON.stringify(dados, null, 2);
+      const blob = new Blob([json], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'backup_mk_' + getToday() + '.json';
+      a.click();
+    }
+    
+    function importarTudo(){
+      const file = document.getElementById('import-json').files[0];
+      if(!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const dados = JSON.parse(e.target.result);
+          
+          pagamentos = dados.pagamentos || [];
+          liberacoes = dados.liberacoes || [];
+          categorias = dados.categorias || [];
+          
+          if(dados.cfg){
+            cfgDelay = dados.cfg.cfgDelay || 12;
+            cfgPct = dados.cfg.cfgPct || 0.85;
+            reservaMinima = dados.cfg.reservaMinima || 15000;
+            periodoHistorico = dados.cfg.periodoHistorico || 30;
+          }
+          
+          salvar();
+          init();
+          alert('Dados importados com sucesso!');
+        } catch(err){
+          alert('Erro ao importar: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+    
+    // ===== A RECEBER ML =====
+    function renderReceber(){
+      const hoje = getToday();
+
+      // Resumo stats
+      const total = liberacoes.reduce((s,l) => s + l.val, 0);
+      const p7 = liberacoes.filter(l => diasDif(hoje, l.data) <= 7 && l.data >= hoje).reduce((s,l) => s + l.val, 0);
+      const p30 = liberacoes.filter(l => diasDif(hoje, l.data) <= 30 && l.data >= hoje).reduce((s,l) => s + l.val, 0);
+
+      document.getElementById('rec-total').textContent = fmt(total);
+      document.getElementById('rec-7d').textContent = fmt(p7);
+      document.getElementById('rec-30d').textContent = fmt(p30);
+
+      // Gerar comando PowerShell
+      gerarCmdML();
+
+      // Lista
+      const tbody = document.getElementById('tbody-receber');
+      const futuras = liberacoes.filter(l => l.data >= hoje).sort((a,b) => a.data.localeCompare(b.data));
+
+      if(futuras.length === 0){
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:#999;">Nenhuma liberação importada. Use o botão "Atualizar do ML".</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = futuras.map(l => `
+        <tr>
+          <td>${ptDate(l.data)}</td>
+          <td>${nomeDia(l.data)}</td>
+          <td style="text-align:right;font-weight:600;color:var(--success);">${fmt(l.val)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function atualizarML(){
+      const status = document.getElementById('ml-status');
+      status.textContent = '⏳ Gerando comando...';
+      gerarCmdML();
+      status.textContent = '✅ Comando gerado! Copie e execute no PowerShell.';
+    }
+
+    function gerarCmdML(){
+      const token = 'SEU_ACCESS_TOKEN'; // Será substituído pelo token real
+      const cmd = `# Execute no PowerShell para importar liberações ML
+$token = "${token}"
+$response = Invoke-RestMethod -Uri "https://api.mercadolibre.com/money-releases/list?status=approved&date_created_from=NOW/DAY&range=40&offset=0" -Headers @{Authorization="Bearer $token"}
+$liberacoes = $response.results | ForEach-Object { @{data=$_.date_approved.Substring(0,10); val=$_.net_credit_amount} }
+$body = @{liberacoes=$liberacoes} | ConvertTo-Json -Depth 3
+Invoke-WebRequest -Uri "http://localhost:8080/import" -Method POST -Body $body -ContentType "application/json"`;
+
+      const cmdEl = document.getElementById('ml-cmd');
+      if(cmdEl) cmdEl.textContent = cmd;
+    }
+
+    function copiarCmdML(){
+      const cmd = document.getElementById('ml-cmd').textContent;
+      navigator.clipboard.writeText(cmd).then(() => alert('Comando copiado!')).catch(() => {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = cmd;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('Comando copiado!');
+      });
+    }
+
+    // Receptor de dados ML (chamado pelo PowerShell via servidor local)
+    window.importarMLData = function(dados){
+      if(dados && dados.liberacoes){
+        liberacoes = dados.liberacoes;
+        salvar();
+        if(document.getElementById('view-receber').classList.contains('active')) renderReceber();
+        recalc();
+        alert('✅ ' + liberacoes.length + ' liberações importadas do ML!');
+      }
+    };
+
+    // ===== CATEGORIAS =====
+    function renderCategorias(){
+      const tbody = document.getElementById('tbody-categorias');
+      tbody.innerHTML = categorias.map((c, i) => `
+        <tr>
+          <td>${c.nome}</td>
+          <td style="text-align:center;">
+            <input type="checkbox" ${c.impactaDRE ? 'checked' : ''} onchange="categorias[${i}].impactaDRE=this.checked;salvar()">
+          </td>
+          <td style="text-align:center;">
+            <button class="btn-del btn-sm" onclick="removerCategoria(${i})">✕</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function adicionarCategoria(){
+      const nome = prompt('Nome da nova categoria:');
+      if(!nome || !nome.trim()) return;
+      if(categorias.find(c => c.nome === nome.trim())){
+        alert('Categoria já existe');
+        return;
+      }
+      categorias.push({nome: nome.trim(), impactaDRE: true});
+      salvar();
+      renderCategorias();
+      // Atualizar select de filtro e modal
+      atualizarSelectCategorias();
+    }
+
+    function removerCategoria(idx){
+      if(!confirm('Remover categoria "' + categorias[idx].nome + '"?')) return;
+      categorias.splice(idx, 1);
+      salvar();
+      renderCategorias();
+      atualizarSelectCategorias();
+    }
+
+    function atualizarSelectCategorias(){
+      const opts = categorias.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+      const filtCat = document.getElementById('filtro-cat');
+      if(filtCat) filtCat.innerHTML = '<option value="">Todas categorias</option>' + opts;
+      const lancCat = document.getElementById('lanc-cat');
+      if(lancCat) lancCat.innerHTML = opts;
+    }
+
+    // ===== IMPORT TINY XLS =====
+    function importarTinyXLS(){
+      const file = document.getElementById('tiny-xls').files[0];
+      if(!file) return;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, {type:'array'});
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, {header:1});
+
+          if(rows.length < 2){ alert('Arquivo vazio'); return; }
+
+          const header = rows[0].map(h => String(h).toLowerCase());
+          const colData = header.findIndex(h => h.includes('venc') || h.includes('data'));
+          const colForn = header.findIndex(h => h.includes('forn'));
+          const colDesc = header.findIndex(h => h.includes('hist') || h.includes('desc'));
+          const colVal  = header.findIndex(h => h.includes('valor') || h === 'v');
+
+          if(colData < 0 || colVal < 0){ alert('Colunas não encontradas. Esperado: Vencimento, Valor'); return; }
+
+          let count = 0;
+          for(let i = 1; i < rows.length; i++){
+            const row = rows[i];
+            if(!row || !row[colData]) continue;
+
+            const dataStr = String(row[colData]).trim();
+            const valStr  = String(row[colVal] || '').replace(',','.');
+            const valor   = parseFloat(valStr);
+            if(!dataStr || isNaN(valor) || valor <= 0) continue;
+
+            // Converter data dd/mm/yyyy ou yyyy-mm-dd
+            let dataFinal = '';
+            if(/\d{2}\/\d{2}\/\d{4}/.test(dataStr)){
+              const [d,m,y] = dataStr.split('/');
+              dataFinal = `${y}-${m}-${d}`;
+            } else if(/\d{4}-\d{2}-\d{2}/.test(dataStr)){
+              dataFinal = dataStr;
+            }
+            if(!dataFinal) continue;
+
+            pagamentos.push({
+              desc: colDesc >= 0 ? String(row[colDesc] || '').trim() || 'Importado Tiny' : 'Importado Tiny',
+              forn: colForn >= 0 ? String(row[colForn] || '').trim() : '',
+              val: valor,
+              data: dataFinal,
+              cat: 'Fornecedor',
+              pago: false,
+              tipo: 'unico'
+            });
+            count++;
+          }
+
+          salvar();
+          document.getElementById('tiny-status').textContent = '✅ ' + count + ' lançamentos importados!';
+          document.getElementById('tiny-status').style.color = 'var(--success)';
+        } catch(err){
+          document.getElementById('tiny-status').textContent = '❌ Erro: ' + err.message;
+          document.getElementById('tiny-status').style.color = 'var(--danger)';
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // ===== INIT =====
+    function init(){
+      // Atualizar valores nos controles
+      document.getElementById('range-delay').value = cfgDelay;
+      document.getElementById('input-delay').value = cfgDelay;
+      document.getElementById('val-delay').textContent = cfgDelay + ' dias';
+      
+      document.getElementById('range-pct').value = Math.round(cfgPct * 100);
+      document.getElementById('val-pct').textContent = Math.round(cfgPct * 100) + '%';
+      
+      document.getElementById('input-reserva').value = reservaMinima;
+      
+      document.getElementById('range-hist').value = periodoHistorico;
+      document.getElementById('val-hist').textContent = periodoHistorico + ' dias';
+      
+      // Popular selects de categorias
+      atualizarSelectCategorias();
+      
+      // Renderizar dashboard
+      renderDashboard();
+    }
+    
+    // ===== START =====
+    carregar();
+    init();
+    
+  </script>
+  
+</body>
+</html>
