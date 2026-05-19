@@ -395,6 +395,31 @@
       margin-top:4px;
     }
     
+    /* Toggle buttons active state */
+    .btn-toggle{
+      padding:6px 14px;
+      border:1px solid var(--gray-200);
+      border-radius:6px;
+      font-size:12px;
+      font-weight:500;
+      cursor:pointer;
+      background:#fff;
+      color:var(--gray-600);
+      transition:all 0.2s;
+    }
+    .btn-toggle:hover{border-color:var(--primary);color:var(--primary);}
+    .btn-toggle.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+    /* Planilha sticky header */
+    #view-planilha .card{overflow:visible;}
+    #view-planilha .card-body{max-height:70vh;overflow-y:auto;padding:0;}
+    #table-planilha thead th{
+      position:sticky;
+      top:0;
+      background:var(--gray-50);
+      z-index:10;
+    }
+
     /* Lista de lançamentos */
     .entry-list{max-height:500px;overflow-y:auto;}
     .entry{
@@ -487,17 +512,38 @@
         <!-- Resumo período -->
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Resumo dos próximos 30 dias</div>
+            <div class="card-title">Resumo do período</div>
+            <div class="d-flex gap-1" style="flex-wrap:wrap;align-items:center;">
+              <select id="resumo-periodo" onchange="atualizarResumo()" style="font-size:12px;padding:4px 8px;">
+                <option value="dia">Hoje</option>
+                <option value="semana">Esta semana (7d)</option>
+                <option value="mes" selected>Este mês (30d)</option>
+                <option value="custom">Personalizado</option>
+              </select>
+              <div id="resumo-custom" style="display:none;" class="d-flex gap-1">
+                <input type="date" id="resumo-de" style="font-size:12px;padding:4px;" onchange="atualizarResumo()">
+                <span style="align-self:center;font-size:12px;">até</span>
+                <input type="date" id="resumo-ate" style="font-size:12px;padding:4px;" onchange="atualizarResumo()">
+              </div>
+            </div>
           </div>
           <div class="card-body">
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;">
               <div>
-                <div class="text-muted mb-1">Entradas confirmadas ML</div>
-                <div style="font-size:20px;font-weight:600;color:var(--success);" id="resumo-entrada">—</div>
+                <div class="text-muted mb-1" style="font-size:11px;">Entrada Confirmada ML</div>
+                <div style="font-size:18px;font-weight:600;color:var(--success);" id="resumo-entrada">—</div>
               </div>
               <div>
-                <div class="text-muted mb-1">Total a pagar</div>
-                <div style="font-size:20px;font-weight:600;color:var(--danger);" id="resumo-pagar">—</div>
+                <div class="text-muted mb-1" style="font-size:11px;">Projeção Complementar</div>
+                <div style="font-size:18px;font-weight:600;color:#0891b2;" id="resumo-proj">—</div>
+              </div>
+              <div>
+                <div class="text-muted mb-1" style="font-size:11px;">Total a Pagar</div>
+                <div style="font-size:18px;font-weight:600;color:var(--danger);" id="resumo-pagar">—</div>
+              </div>
+              <div>
+                <div class="text-muted mb-1" style="font-size:11px;">Saldo do Período</div>
+                <div style="font-size:18px;font-weight:600;" id="resumo-saldo">—</div>
               </div>
             </div>
           </div>
@@ -509,7 +555,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
           <h1>Calendário Financeiro</h1>
           <div class="d-flex gap-1">
-            <button class="btn-out btn-sm" id="cal-toggle-conf" onclick="toggleCalendario('confirmado')">Confirmado</button>
+            <button class="btn-out btn-sm" id="cal-toggle-conf" onclick="toggleCalendario('confirmado')" class-base="btn-toggle">Confirmado</button>
             <button class="btn-out btn-sm" id="cal-toggle-proj" onclick="toggleCalendario('projetado')">Conf. + Projetado</button>
           </div>
         </div>
@@ -541,8 +587,8 @@
           <div class="card-header">
             <div>Fluxo de Caixa Projetado</div>
             <div class="d-flex gap-1">
-              <button class="btn-out btn-sm" id="plan-toggle-conf" onclick="togglePlanilha('confirmado')">Confirmado</button>
-              <button class="btn-out btn-sm" id="plan-toggle-proj" onclick="togglePlanilha('projetado')">Confirmado + Projetado</button>
+              <button class="btn-toggle active" id="plan-toggle-conf" onclick="togglePlanilha('confirmado')">Confirmado</button>
+              <button class="btn-toggle" id="plan-toggle-proj" onclick="togglePlanilha('projetado')">Confirmado + Projetado</button>
             </div>
           </div>
           <div class="card-body" style="overflow-x:auto;">
@@ -551,9 +597,9 @@
                 <tr>
                   <th>Data</th>
                   <th>Dia</th>
-                  <th>Entrada Conf. ML</th>
-                  <th>Projeção Compl.</th>
-                  <th>Total Entrada</th>
+                  <th id="th-conf">Entrada Conf. ML</th>
+                  <th id="th-proj">Projeção Compl.</th>
+                  <th id="th-total">Total Entrada</th>
                   <th>A Pagar</th>
                   <th>Saldo Dia</th>
                   <th>Saldo Acum.</th>
@@ -572,6 +618,8 @@
           <h1>Contas a Pagar</h1>
           <div class="d-flex gap-1">
             <button class="btn" onclick="abrirModalLanc()">+ Novo</button>
+            <button class="btn-out" onclick="document.getElementById('import-pagar-csv').click()">📤 Importar CSV</button>
+            <input type="file" id="import-pagar-csv" accept=".csv" style="display:none" onchange="importarCSV()">
             <button class="btn-out" onclick="exportarCSV()">📥 Exportar CSV</button>
           </div>
         </div>
@@ -642,6 +690,11 @@
               <div style="font-size:11px;font-weight:600;margin-bottom:6px;">Comando PowerShell:</div>
               <code id="ml-cmd" style="font-size:10px;display:block;padding:8px;background:#fff;border:1px solid #e5e5e5;border-radius:4px;word-break:break-all;white-space:pre-wrap;"></code>
               <button class="btn-out btn-sm" onclick="copiarCmdML()" style="margin-top:8px;">📋 Copiar comando</button>
+            </div>
+            <div style="margin-top:15px;padding-top:15px;border-top:1px solid var(--gray-200);">
+              <div style="font-size:12px;font-weight:600;margin-bottom:6px;">Ou cole o JSON aqui diretamente:</div>
+              <textarea id="ml-json-input" rows="4" style="width:100%;font-size:11px;font-family:monospace;" placeholder='{"liberacoes":[{"data":"2026-05-20","val":1523.45}]}'></textarea>
+              <button class="btn btn-sm" onclick="processarJSONColado()" style="margin-top:8px;">📥 Importar JSON colado</button>
             </div>
           </div>
         </div>
@@ -750,13 +803,19 @@
         <div class="card">
           <div class="card-body" style="overflow-x:auto;padding:0;">
             <table>
+              <div style="padding:10px 15px;border-bottom:1px solid var(--gray-200);display:flex;gap:8px;">
+                <button class="btn-out btn-sm" onclick="deletarSKUsSelecionados()">🗑️ Deletar selecionados</button>
+                <button class="btn-out btn-sm" onclick="abrirModalImpostoLote()">🔄 Imposto selecionados</button>
+                <span id="sku-sel-count" style="align-self:center;font-size:12px;color:#666;"></span>
+              </div>
               <thead>
                 <tr>
+                  <th style="width:40px;"><input type="checkbox" id="sku-sel-all" onchange="toggleTodosSKUs(this.checked)"></th>
                   <th>SKU</th>
                   <th>Custo (R$)</th>
                   <th>Imposto (%)</th>
                   <th>Custo Total (R$)</th>
-                  <th style="width:100px;text-align:center;">Ações</th>
+                  <th style="width:80px;text-align:center;">Ações</th>
                 </tr>
               </thead>
               <tbody id="tbody-skus"></tbody>
@@ -1211,8 +1270,8 @@
         totalPagar += getPag(data);
       }
       
-      document.getElementById('resumo-entrada').textContent = fmt(totalEntrada);
-      document.getElementById('resumo-pagar').textContent = fmt(totalPagar);
+      // Resumo via função com filtro
+      atualizarResumo();
     }
     
     function renderPlanilha(){
@@ -1222,9 +1281,17 @@
       let html = '';
       
       // Atualizar botões
-      document.getElementById('plan-toggle-conf').className = 'btn-out btn-sm' + (planilhaMode === 'confirmado' ? ' active' : '');
-      document.getElementById('plan-toggle-proj').className = 'btn-out btn-sm' + (planilhaMode === 'projetado' ? ' active' : '');
+      document.getElementById('plan-toggle-conf').className = 'btn-toggle' + (planilhaMode === 'confirmado' ? ' active' : '');
+      document.getElementById('plan-toggle-proj').className = 'btn-toggle' + (planilhaMode === 'projetado' ? ' active' : '');
       
+      // Atualizar colunas visíveis conforme modo
+      const thConf = document.getElementById('th-conf');
+      const thProj = document.getElementById('th-proj');
+      const thTotal = document.getElementById('th-total');
+      if(thConf) thConf.style.display = planilhaMode === 'projetado' ? '' : '';
+      if(thProj) thProj.style.display = planilhaMode === 'projetado' ? '' : 'none';
+      if(thTotal) thTotal.style.display = planilhaMode === 'projetado' ? '' : 'none';
+
       for(let i=0; i<30; i++){
         const data = addDias(hoje, i);
         const dia = nomeDia(data);
@@ -1233,17 +1300,15 @@
         const pag = getPag(data);
         const saldoDia = entrada - pag;
         saldoAcum += saldoDia;
-        
         const cobertura = saldoAcum / (pag || 100);
-        
         const corSaldo = saldoAcum < reservaMinima ? 'text-danger' : '';
-        
+        const showProj = planilhaMode === 'projetado';
+
         html += `<tr>
           <td>${ptDate(data)}</td>
           <td>${dia}</td>
           <td>${fmt(e.conf)}</td>
-          <td>${fmt(e.proj)}</td>
-          <td>${fmt(entrada)}</td>
+          ${showProj ? `<td>${fmt(e.proj)}</td><td>${fmt(entrada)}</td>` : ''}
           <td>${fmt(pag)}</td>
           <td class="${saldoDia < 0 ? 'text-danger' : 'text-success'}">${fmt(saldoDia)}</td>
           <td class="${corSaldo}">${fmt(saldoAcum)}</td>
@@ -1330,8 +1395,8 @@
       document.getElementById('cal-mes-label').textContent = meses[mesAtual.getMonth()] + ' ' + mesAtual.getFullYear();
       
       // Atualizar botões toggle
-      document.getElementById('cal-toggle-conf').className = 'btn-out btn-sm' + (calendarioMode === 'confirmado' ? ' active' : '');
-      document.getElementById('cal-toggle-proj').className = 'btn-out btn-sm' + (calendarioMode === 'projetado' ? ' active' : '');
+      document.getElementById('cal-toggle-conf').className = 'btn-toggle' + (calendarioMode === 'confirmado' ? ' active' : '');
+      document.getElementById('cal-toggle-proj').className = 'btn-toggle' + (calendarioMode === 'projetado' ? ' active' : '');
       
       // Primeiro dia do mês
       const primeiroDia = new Date(mesAtual.getFullYear(), mesAtual.getMonth(), 1);
@@ -1380,10 +1445,10 @@
         const alturaEntrada = Math.round((entrada / maxVal) * 40);
         const alturaSaida = Math.round((pag / maxVal) * 40);
         
-        html += `<div class="cal-day ${isHoje ? 'hoje' : ''}">
+        html += `<div class="cal-day ${isHoje ? 'hoje' : ''}" onclick="abrirDia('${data}')">
           <div class="cal-day-num">${dia}</div>
-          ${entrada > 0 ? `<div class="cal-bar entrada" style="height:${alturaEntrada}px;"></div>` : ''}
-          ${pag > 0 ? `<div class="cal-bar saida" style="height:${alturaSaida}px;"></div>` : ''}
+          ${entrada > 0 ? `<div class="cal-bar entrada" style="height:${alturaEntrada}px;" title="Entrada: ${fmt(entrada)}"></div>` : ''}
+          ${pag > 0 ? `<div class="cal-bar saida" style="height:${alturaSaida}px;" title="A pagar: ${fmt(pag)}"></div>` : ''}
           ${entrada > 0 || pag > 0 ? `<div class="cal-saldo ${saldo >= 0 ? 'text-success' : 'text-danger'}">${fmt(saldo)}</div>` : ''}
         </div>`;
       }
@@ -1449,17 +1514,12 @@
       if(valor > 0 && data){
         const saldoFinal = simularSaldo(valor, data);
         const viavel = saldoFinal >= reservaMinima;
-        
-        if(viavel){
-          resultado.innerHTML = `<div class="alert alert-info">
-            ✅ Compra VIÁVEL! Saldo após pagamento: <strong class="text-success">${fmt(saldoFinal)}</strong>
-          </div>`;
-        } else {
-          resultado.innerHTML = `<div class="alert alert-warning">
-            ⚠️ Compra ARRISCADA. Saldo cairia para: <strong class="text-danger">${fmt(saldoFinal)}</strong>
-            <div style="margin-top:8px;font-size:12px;">Abaixo da reserva mínima (${fmt(reservaMinima)})</div>
-          </div>`;
-        }
+
+        const badge = viavel
+          ? `<div class="alert alert-info">✅ Compra VIÁVEL! Saldo mínimo: <strong class="text-success">${fmt(saldoFinal)}</strong></div>`
+          : `<div class="alert alert-warning">⚠️ Compra ARRISCADA. Saldo cairia para: <strong class="text-danger">${fmt(saldoFinal)}</strong><div style="margin-top:4px;font-size:11px;">Abaixo da reserva mínima (${fmt(reservaMinima)})</div></div>`;
+
+        resultado.innerHTML = badge + renderPlanilhaSimulador(valor, data);
         return;
       }
       
@@ -1687,7 +1747,7 @@
           
           salvar();
           renderSKUs();
-          alert(count + ' SKU(s) importado(s)!');
+          alert(count + ' SKU(s) importado(s)/atualizados!');
         } catch(err){
           alert('Erro ao importar: ' + err.message);
         }
@@ -1854,7 +1914,8 @@
       const csv = 'data;desc;forn;val;cat;pago\n' + 
         pagamentos.map(p => `${p.data};${p.desc};${p.forn||''};${p.val.toFixed(2).replace('.',',')};${p.cat};${p.pago?'sim':'nao'}`).join('\n');
       
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+      const BOM = '\uFEFF'; // BOM UTF-8 para Excel reconhecer acentos
+      const blob = new Blob([BOM + csv], {type:'text/csv;charset=utf-8'});
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = 'contas_a_pagar_' + getToday() + '.csv';
@@ -2096,6 +2157,225 @@ Invoke-WebRequest -Uri "http://localhost:8080/import" -Method POST -Body $body -
         }
       };
       reader.readAsArrayBuffer(file);
+    }
+
+
+    // ===== DASHBOARD RESUMO COM FILTRO =====
+    function atualizarResumo(){
+      const periodo = document.getElementById('resumo-periodo').value;
+      const customDiv = document.getElementById('resumo-custom');
+      customDiv.style.display = periodo === 'custom' ? 'flex' : 'none';
+
+      const hoje = getToday();
+      let dataIni, dataFim;
+
+      if(periodo === 'dia'){
+        dataIni = dataFim = hoje;
+      } else if(periodo === 'semana'){
+        dataIni = hoje;
+        dataFim = addDias(hoje, 7);
+      } else if(periodo === 'mes'){
+        dataIni = hoje;
+        dataFim = addDias(hoje, 30);
+      } else {
+        dataIni = document.getElementById('resumo-de').value || hoje;
+        dataFim = document.getElementById('resumo-ate').value || addDias(hoje, 30);
+      }
+
+      let conf = 0, proj = 0, pagar = 0;
+      let d = dataIni;
+
+      while(d <= dataFim){
+        const e = getEntrada(d);
+        conf += e.conf;
+        proj += e.proj;
+        pagar += getPag(d);
+        d = addDias(d, 1);
+      }
+
+      const saldo = conf + proj - pagar;
+
+      document.getElementById('resumo-entrada').textContent = fmt(conf);
+      document.getElementById('resumo-proj').textContent = fmt(proj);
+      document.getElementById('resumo-pagar').textContent = fmt(pagar);
+      const saldoEl = document.getElementById('resumo-saldo');
+      saldoEl.textContent = fmt(saldo);
+      saldoEl.className = saldo >= 0 ? 'text-success' : 'text-danger';
+    }
+
+    // ===== CALENDÁRIO - CLIQUE NO DIA =====
+    function abrirDia(data){
+      const e = getEntrada(data);
+      const pag = getPag(data);
+      const pagList = pagamentos.filter(p => p.data === data && !p.pago);
+      const saldo = e.total - pag;
+
+      const itens = pagList.length > 0
+        ? pagList.map(p => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:12px;">
+            <span>${p.desc} ${p.forn ? '· '+p.forn : ''}</span>
+            <span style="color:var(--danger);font-weight:600;">${fmt(p.val)}</span>
+          </div>`).join('')
+        : '<div style="font-size:12px;color:#999;padding:8px 0;">Nenhuma conta a pagar</div>';
+
+      // Usar um alert estilizado via modal reutilizável
+      if(!document.getElementById('modal-dia')){
+        const m = document.createElement('div');
+        m.className = 'modal';
+        m.id = 'modal-dia';
+        m.innerHTML = `<div class="modal-content" style="max-width:400px;">
+          <div class="modal-header">
+            <div class="modal-title" id="modal-dia-title">Detalhes do dia</div>
+            <button class="btn-out btn-sm" onclick="fecharModal('modal-dia')">✕</button>
+          </div>
+          <div class="modal-body" id="modal-dia-body"></div>
+          <div class="modal-footer"><button class="btn-out" onclick="fecharModal('modal-dia')">Fechar</button></div>
+        </div>`;
+        document.body.appendChild(m);
+      }
+
+      document.getElementById('modal-dia-title').textContent = ptDate(data) + ' (' + nomeDia(data) + ')';
+      document.getElementById('modal-dia-body').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px;">
+          <div style="padding:10px;background:#f0fdf4;border-radius:6px;">
+            <div style="font-size:10px;color:#666;">Entrada ML</div>
+            <div style="font-weight:600;color:var(--success);">${fmt(e.conf)}</div>
+            ${e.proj > 0 ? `<div style="font-size:10px;color:#0891b2;">+ proj: ${fmt(e.proj)}</div>` : ''}
+          </div>
+          <div style="padding:10px;background:#fef2f2;border-radius:6px;">
+            <div style="font-size:10px;color:#666;">A Pagar</div>
+            <div style="font-weight:600;color:var(--danger);">${fmt(pag)}</div>
+          </div>
+        </div>
+        <div style="padding:10px;background:${saldo>=0?'#f0fdf4':'#fef2f2'};border-radius:6px;margin-bottom:15px;">
+          <div style="font-size:10px;color:#666;">Saldo do dia</div>
+          <div style="font-weight:700;font-size:18px;color:${saldo>=0?'var(--success)':'var(--danger)'};">${fmt(saldo)}</div>
+        </div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px;">Contas a pagar:</div>
+        ${itens}
+      `;
+
+      document.getElementById('modal-dia').classList.add('open');
+    }
+
+    // ===== IMPORTAR CSV CONTAS A PAGAR =====
+    function importarCSV(){
+      const file = document.getElementById('import-pagar-csv').files[0];
+      if(!file) return;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const lines = e.target.result.replace(/﻿/,'').split('
+');
+          let count = 0;
+
+          for(let i = 1; i < lines.length; i++){
+            const line = lines[i].trim();
+            if(!line) continue;
+            const p = line.split(';');
+            if(p.length < 4) continue;
+
+            const val = parseFloat(p[3].replace(',','.'));
+            if(isNaN(val)) continue;
+
+            pagamentos.push({
+              data: p[0].trim(),
+              desc: p[1].trim(),
+              forn: p[2].trim(),
+              val,
+              cat: p[4] ? p[4].trim() : 'Fornecedor',
+              pago: p[5] && p[5].trim() === 'sim',
+              tipo: 'unico'
+            });
+            count++;
+          }
+
+          salvar();
+          renderPagar();
+          alert(count + ' lançamento(s) importado(s)!');
+        } catch(err){
+          alert('Erro ao importar: ' + err.message);
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    // ===== A RECEBER - PROCESSAR JSON COLADO =====
+    function processarJSONColado(){
+      const texto = document.getElementById('ml-json-input').value.trim();
+      if(!texto){ alert('Cole o JSON primeiro'); return; }
+
+      try {
+        const dados = JSON.parse(texto);
+        if(dados.liberacoes && Array.isArray(dados.liberacoes)){
+          liberacoes = dados.liberacoes;
+          salvar();
+          renderReceber();
+          recalc();
+          document.getElementById('ml-status').textContent = '✅ ' + liberacoes.length + ' liberações importadas!';
+          document.getElementById('ml-json-input').value = '';
+        } else {
+          alert('JSON inválido. Esperado: {"liberacoes":[{"data":"2026-05-20","val":1523.45}]}');
+        }
+      } catch(err){
+        alert('JSON inválido: ' + err.message);
+      }
+    }
+
+    // ===== SKUs - SELEÇÃO MÚLTIPLA =====
+    function toggleTodosSKUs(checked){
+      document.querySelectorAll('.sku-cb').forEach(cb => cb.checked = checked);
+      atualizarContSKUSel();
+    }
+
+    function atualizarContSKUSel(){
+      const sel = document.querySelectorAll('.sku-cb:checked').length;
+      const cont = document.getElementById('sku-sel-count');
+      if(cont) cont.textContent = sel > 0 ? sel + ' selecionado(s)' : '';
+    }
+
+    function getSKUsSelecionados(){
+      return Array.from(document.querySelectorAll('.sku-cb:checked')).map(cb => parseInt(cb.dataset.idx));
+    }
+
+    function deletarSKUsSelecionados(){
+      const idxs = getSKUsSelecionados();
+      if(idxs.length === 0){ alert('Selecione ao menos 1 SKU'); return; }
+      if(!confirm('Deletar ' + idxs.length + ' SKU(s)?')) return;
+
+      // Deletar em ordem decrescente para não bagunçar índices
+      idxs.sort((a,b) => b - a).forEach(i => skus.splice(i, 1));
+      salvar();
+      renderSKUs();
+    }
+
+    // ===== SIMULADOR - PLANILHA DE DIAS =====
+    function renderPlanilhaSimulador(valorExtra, dataPag){
+      const hoje = getToday();
+      let saldo = reservaMinima * 2;
+      let html = '<table style="width:100%;font-size:12px;margin-top:15px;border-collapse:collapse;">';
+      html += '<thead><tr><th style="padding:6px;background:#f9fafb;border:1px solid #e5e5e5;">Data</th><th style="padding:6px;background:#f9fafb;border:1px solid #e5e5e5;">Entrada</th><th style="padding:6px;background:#f9fafb;border:1px solid #e5e5e5;">A Pagar</th><th style="padding:6px;background:#f9fafb;border:1px solid #e5e5e5;">Saldo Acum.</th></tr></thead><tbody>';
+
+      for(let i = 0; i < 30; i++){
+        const data = addDias(hoje, i);
+        const e = getEntrada(data);
+        const pagNormal = getPag(data);
+        const pagExtra = data === dataPag ? pagNormal + (valorExtra || 0) : pagNormal;
+        saldo += e.total - pagExtra;
+
+        const cor = saldo < reservaMinima ? 'background:#fef2f2;' : '';
+        const isPagDia = data === dataPag && valorExtra > 0;
+
+        html += `<tr style="${cor}">
+          <td style="padding:5px 8px;border:1px solid #e5e5e5;">${ptDate(data)} ${isPagDia ? '⬅️' : ''}</td>
+          <td style="padding:5px 8px;border:1px solid #e5e5e5;color:var(--success);">${fmt(e.total)}</td>
+          <td style="padding:5px 8px;border:1px solid #e5e5e5;color:var(--danger);">${fmt(pagExtra)}</td>
+          <td style="padding:5px 8px;border:1px solid #e5e5e5;font-weight:600;color:${saldo<reservaMinima?'var(--danger)':'var(--success)'};">${fmt(saldo)}</td>
+        </tr>`;
+      }
+
+      html += '</tbody></table>';
+      return html;
     }
 
     // ===== INIT =====
