@@ -770,11 +770,7 @@
           <div class="card-body">
             <button class="btn" onclick="atualizarML()">⚡ Atualizar do ML</button>
             <div id="ml-status" style="margin-top:10px;font-size:12px;color:#666;"></div>
-            <div style="margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;">
-              <div style="font-size:11px;font-weight:600;margin-bottom:6px;">Comando PowerShell:</div>
-              <code id="ml-cmd" style="font-size:10px;display:block;padding:8px;background:#fff;border:1px solid #e5e5e5;border-radius:4px;word-break:break-all;white-space:pre-wrap;"></code>
-              <button class="btn-out btn-sm" onclick="copiarCmdML()" style="margin-top:8px;">📋 Copiar comando</button>
-            </div>
+            
             <div style="margin-top:15px;padding-top:15px;border-top:1px solid var(--gray-200);">
               <div style="font-size:12px;font-weight:600;margin-bottom:6px;">Ou cole o JSON aqui diretamente:</div>
               <textarea id="ml-json-input" rows="4" style="width:100%;font-size:11px;font-family:monospace;" placeholder='Exemplo: {&quot;liberacoes&quot;:[{&quot;data&quot;:&quot;2026-05-20&quot;,&quot;val&quot;:1523.45}]}'></textarea>
@@ -2204,16 +2200,9 @@
     }
 
     function gerarCmdML(){
-      const token = 'SEU_ACCESS_TOKEN'; // Será substituído pelo token real
-      const cmd = `# Execute no PowerShell para importar liberações ML
-$token = "${token}"
-$response = Invoke-RestMethod -Uri "https://api.mercadolibre.com/money-releases/list?status=approved&date_created_from=NOW/DAY&range=40&offset=0" -Headers @{Authorization="Bearer $token"}
-$liberacoes = $response.results | ForEach-Object { @{data=$_.date_approved.Substring(0,10); val=$_.net_credit_amount} }
-$body = @{liberacoes=$liberacoes} | ConvertTo-Json -Depth 3
-Invoke-WebRequest -Uri "http://localhost:8080/import" -Method POST -Body $body -ContentType "application/json"`;
-
-      const cmdEl = document.getElementById('ml-cmd');
-      if(cmdEl) cmdEl.textContent = cmd;
+      // Credenciais removidas por segurança.
+      // Use seu script PowerShell local para gerar o JSON
+      // e cole no campo abaixo.
     }
 
     function copiarCmdML(){
@@ -2778,9 +2767,21 @@ Invoke-WebRequest -Uri "http://localhost:8080/import" -Method POST -Body $body -
         }
         if(!novas.length){ alert('Nenhuma liberação encontrada no JSON'); return; }
         liberacoes = novas;
-        salvar(); renderReceber(); recalc();
-        document.getElementById('ml-status').textContent = '✅ ' + liberacoes.length + ' liberações importadas!';
+
+        // Se vier saldoMP no JSON, atualizar automaticamente
+        if(dados.saldoMP !== undefined){
+          saldoMP = parseFloat(dados.saldoMP) || 0;
+          const mpInput = document.getElementById('saldo-mp');
+          if(mpInput) mpInput.value = saldoMP;
+          atualizarSaldoTotal();
+          document.getElementById('ml-status').textContent =
+            '✅ ' + liberacoes.length + ' liberações + saldo MP R$ ' + fmt(saldoMP) + ' importados!';
+        } else {
+          document.getElementById('ml-status').textContent = '✅ ' + liberacoes.length + ' liberações importadas!';
+        }
+
         document.getElementById('ml-status').style.color = 'var(--success)';
+        salvar(); renderReceber(); recalc();
         document.getElementById('ml-json-input').value = '';
       } catch(err){
         alert('Erro no JSON: ' + err.message);
