@@ -654,6 +654,8 @@
             <button class="btn" onclick="abrirModalLanc()">+ Novo</button>
             <button class="btn-out" onclick="document.getElementById('import-pagar-csv').click()">📤 Importar CSV</button>
             <input type="file" id="import-pagar-csv" accept=".csv" style="display:none" onchange="importarCSV()">
+            <button class="btn-out" onclick="document.getElementById('import-tiny-pagar').click()">📊 Importar XLS Tiny</button>
+            <input type="file" id="import-tiny-pagar" accept=".xls,.xlsx" style="display:none" onchange="importarTinyXLSPagar()">
             <button class="btn-out" onclick="exportarCSV()">📥 Exportar CSV</button>
           </div>
         </div>
@@ -661,7 +663,7 @@
         <!-- Filtros -->
         <div class="card mb-2">
           <div class="card-body">
-            <div class="d-flex gap-1" style="flex-wrap:wrap;">
+            <div class="d-flex gap-1" style="flex-wrap:wrap;margin-bottom:10px;">
               <input type="text" id="filtro-busca" placeholder="🔍 Buscar..." style="max-width:300px;" oninput="renderPagar()">
               
               <select id="filtro-periodo" onchange="renderPagar()">
@@ -687,8 +689,19 @@
         
         <!-- Lista -->
         <div class="card">
-          <div class="card-header">
-            <div>Total: <span id="total-filtrado" class="text-danger">R$ 0,00</span></div>
+          <div class="card-header" style="flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="cb-todos" onchange="selecionarTodosPagar(this.checked)">
+                Selecionar todos
+              </label>
+              <span id="pagar-sel-count" style="font-size:12px;color:#666;"></span>
+            </div>
+            <div class="d-flex gap-1">
+              <button class="btn-out btn-sm" onclick="marcarSelecionadosPagos()">✓ Marcar pagos</button>
+              <button class="btn-del btn-sm" onclick="deletarSelecionadosPagar()">🗑️ Deletar</button>
+              <span style="align-self:center;font-size:13px;font-weight:600;color:var(--danger);">Total: <span id="total-filtrado">R$ 0,00</span></span>
+            </div>
           </div>
           <div id="lista-pagar" class="entry-list"></div>
         </div>
@@ -945,7 +958,8 @@
         <div class="card">
           <div class="card-header"><div class="card-title">📊 Importar XLS Tiny ERP</div></div>
           <div class="card-body">
-            <p style="font-size:12px;color:#666;margin-bottom:10px;">Formato do Tiny: Vencimento, Fornecedor, Histórico, Valor</p>
+            <p style="font-size:12px;color:#666;margin-bottom:10px;">Colunas do Tiny: Vencimento | Fornecedor | Histórico | Nº doc | Data emissão | Valor | Saldo | Pago</p>
+            <p style="font-size:11px;color:#999;margin-bottom:8px;">Parcelamentos são detectados automaticamente pelo padrão "Parcela (X/Y)" no histórico.</p>
             <input type="file" id="tiny-xls" accept=".xls,.xlsx" onchange="importarTinyXLS()">
             <div id="tiny-status" style="font-size:12px;margin-top:8px;"></div>
           </div>
@@ -1474,7 +1488,7 @@
                       '<span class="badge badge-warning">Em aberto</span>';
         
         html += `<div class="entry" onclick="editarLanc(${idx})">
-          <input type="checkbox" onclick="event.stopPropagation()">
+          <input type="checkbox" class="cb-pagar" data-idx="${idx}" onclick="event.stopPropagation();atualizarContPagar()">
           <div class="entry-main">
             <div class="entry-title">${p.desc}</div>
             <div class="entry-meta">${ptDate(p.data)} • ${p.forn || 'Sem fornecedor'} • ${p.cat}</div>
@@ -2206,66 +2220,119 @@ Invoke-WebRequest -Uri "http://localhost:8080/import" -Method POST -Body $body -
     }
 
     // ===== IMPORT TINY XLS =====
+    function parseTinyXLS(data){
+      const wb = XLSX.read(data, {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {header:1});
+      if(rows.length < 2) return {count:0, error:'Arquivo vazio'};
+
+      const header = rows[0].map(h => String(h||'').toLowerCase());
+      const colData = header.findIndex(h => h.includes('venc'));
+      const colForn = header.findIndex(h => h.includes('forn'));
+      const colDesc = header.findIndex(h => h.includes('hist') || h.includes('desc'));
+      const colVal  = header.findIndex(h => h.includes('valor') && !h.includes('saldo'));
+      const colPago = header.findIndex(h => h.includes('pago'));
+
+      if(colData < 0 || colVal < 0) return {count:0, error:'Colunas Vencimento/Valor não encontradas'};
+
+      // Agrupar por base da descrição (sem "Parcela X/Y")
+      const grupos = {};
+
+      for(let i = 1; i < rows.length; i++){
+        const row = rows[i];
+        if(!row || !row[colData]) continue;
+
+        const dataStr = String(row[colData]).trim();
+        let valor = parseFloat(String(row[colVal]||'0').replace(',','.'));
+        if(!dataStr || isNaN(valor) || valor <= 0) continue;
+
+        // Converter data
+        let dataFinal = '';
+        if(/\d{2}\/\d{2}\/\d{4}/.test(dataStr)){
+          const[d,m,y] = dataStr.split('/');
+          dataFinal = y+'-'+m.padStart(2,'0')+'-'+d.padStart(2,'0');
+        } else if(/\d{4}-\d{2}-\d{2}/.test(dataStr)){
+          dataFinal = dataStr;
+        }
+        if(!dataFinal) continue;
+
+        const descRaw  = colDesc >= 0 ? String(row[colDesc]||'').trim() : 'Importado Tiny';
+        const forn     = colForn >= 0 ? String(row[colForn]||'').trim() : '';
+        const pago     = colPago >= 0 && row[colPago] > 0;
+
+        // Detectar parcela: "Parcela (2/12)" ou "parcela 2/2"
+        const matchParc = descRaw.match(/[Pp]arcela[\s]+\(?([\d]+)\/([\d]+)\)?/);
+        let tipo = 'unico', parcela = '', grupoId = null, descBase = descRaw;
+
+        if(matchParc){
+          const num = parseInt(matchParc[1]);
+          const total = parseInt(matchParc[2]);
+          parcela = num + '/' + total;
+          tipo = 'parcelado';
+          // Base da descrição sem " - Parcela (X/Y)" ou "(parcela X/X)"
+          descBase = descRaw
+            .replace(/\s*-\s*[Pp]arcela\s*\([\d]+\/[\d]+\)/g, '')
+            .replace(/\s*\([Pp]arcela\s+[\d]+\/[\d]+\)/g, '')
+            .trim();
+
+          // Chave do grupo: descBase + forn
+          const chave = descBase + '||' + forn;
+          if(!grupos[chave]) grupos[chave] = 'g_tiny_' + Object.keys(grupos).length;
+          grupoId = grupos[chave];
+        }
+
+        // Definir categoria automaticamente pela descrição
+        let cat = 'Fornecedor';
+        const dl = descBase.toLowerCase();
+        if(dl.includes('imposto') || dl.includes('das ') || dl.includes('simples')) cat = 'Imposto';
+        else if(dl.includes('pro-labore') || dl.includes('pró labore') || dl.includes('pro labore')) cat = 'Pró-labore';
+        else if(dl.includes('salario') || dl.includes('salário')) cat = 'Salário';
+        else if(dl.includes('aluguel') || dl.includes('galpão') || dl.includes('galpao')) cat = 'Aluguel';
+        else if(dl.includes('juros')) cat = 'Capital de Giro - Juros';
+        else if(dl.includes('capital de giro') || dl.includes('amortiza')) cat = 'Capital de Giro - Amortização';
+        else if(dl.includes('ads') || dl.includes('marketing') || dl.includes('fatura mercado livre')) cat = 'ADS/Marketing';
+
+        pagamentos.push({
+          desc: descBase || descRaw,
+          forn, val: valor, data: dataFinal,
+          cat, pago, tipo, parcela, grupoId
+        });
+      }
+
+      return {count: rows.length - 1};
+    }
+
     function importarTinyXLS(){
       const file = document.getElementById('tiny-xls').files[0];
       if(!file) return;
-
       const reader = new FileReader();
       reader.onload = e => {
         try {
-          const data = new Uint8Array(e.target.result);
-          const wb = XLSX.read(data, {type:'array'});
-          const sheet = wb.Sheets[wb.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(sheet, {header:1});
-
-          if(rows.length < 2){ alert('Arquivo vazio'); return; }
-
-          const header = rows[0].map(h => String(h).toLowerCase());
-          const colData = header.findIndex(h => h.includes('venc') || h.includes('data'));
-          const colForn = header.findIndex(h => h.includes('forn'));
-          const colDesc = header.findIndex(h => h.includes('hist') || h.includes('desc'));
-          const colVal  = header.findIndex(h => h.includes('valor') || h === 'v');
-
-          if(colData < 0 || colVal < 0){ alert('Colunas não encontradas. Esperado: Vencimento, Valor'); return; }
-
-          let count = 0;
-          for(let i = 1; i < rows.length; i++){
-            const row = rows[i];
-            if(!row || !row[colData]) continue;
-
-            const dataStr = String(row[colData]).trim();
-            const valStr  = String(row[colVal] || '').replace(',','.');
-            const valor   = parseFloat(valStr);
-            if(!dataStr || isNaN(valor) || valor <= 0) continue;
-
-            // Converter data dd/mm/yyyy ou yyyy-mm-dd
-            let dataFinal = '';
-            if(/\d{2}\/\d{2}\/\d{4}/.test(dataStr)){
-              const [d,m,y] = dataStr.split('/');
-              dataFinal = `${y}-${m}-${d}`;
-            } else if(/\d{4}-\d{2}-\d{2}/.test(dataStr)){
-              dataFinal = dataStr;
-            }
-            if(!dataFinal) continue;
-
-            pagamentos.push({
-              desc: colDesc >= 0 ? String(row[colDesc] || '').trim() || 'Importado Tiny' : 'Importado Tiny',
-              forn: colForn >= 0 ? String(row[colForn] || '').trim() : '',
-              val: valor,
-              data: dataFinal,
-              cat: 'Fornecedor',
-              pago: false,
-              tipo: 'unico'
-            });
-            count++;
-          }
-
-          salvar();
-          document.getElementById('tiny-status').textContent = '✅ ' + count + ' lançamentos importados!';
+          const res = parseTinyXLS(new Uint8Array(e.target.result));
+          if(res.error){ document.getElementById('tiny-status').textContent = '❌ ' + res.error; return; }
+          salvar(); renderPagar(); recalc();
+          document.getElementById('tiny-status').textContent = '✅ ' + res.count + ' lançamentos importados!';
           document.getElementById('tiny-status').style.color = 'var(--success)';
         } catch(err){
           document.getElementById('tiny-status').textContent = '❌ Erro: ' + err.message;
           document.getElementById('tiny-status').style.color = 'var(--danger)';
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function importarTinyXLSPagar(){
+      const file = document.getElementById('import-tiny-pagar').files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const res = parseTinyXLS(new Uint8Array(e.target.result));
+          if(res.error){ alert('Erro: ' + res.error); return; }
+          salvar(); renderPagar(); recalc();
+          alert('✅ ' + res.count + ' lançamentos importados do Tiny!');
+        } catch(err){
+          alert('❌ Erro: ' + err.message);
         }
       };
       reader.readAsArrayBuffer(file);
@@ -2628,21 +2695,27 @@ Invoke-WebRequest -Uri "http://localhost:8080/import" -Method POST -Body $body -
     function processarJSONColado(){
       const texto = document.getElementById('ml-json-input').value.trim();
       if(!texto){ alert('Cole o JSON primeiro'); return; }
-
       try {
         const dados = JSON.parse(texto);
+        let novas = [];
+        // Formato 1: {"liberacoes":[{"data":"...","val":...}]}
         if(dados.liberacoes && Array.isArray(dados.liberacoes)){
-          liberacoes = dados.liberacoes;
-          salvar();
-          renderReceber();
-          recalc();
-          document.getElementById('ml-status').textContent = '✅ ' + liberacoes.length + ' liberações importadas!';
-          document.getElementById('ml-json-input').value = '';
-        } else {
-          alert('JSON inválido. Esperado: {"liberacoes":[{"data":"2026-05-20","val":1523.45}]}');
+          novas = dados.liberacoes;
+        // Formato 2: array direto [{"Name":"2026-05-20","Total":1234}]
+        } else if(Array.isArray(dados)){
+          novas = dados.map(item => ({
+            data: (item.Name || item.data || item.date || '').substring(0,10),
+            val:  parseFloat(item.Total || item.val || item.value || 0)
+          })).filter(l => l.data && l.val > 0);
         }
+        if(!novas.length){ alert('Nenhuma liberação encontrada no JSON'); return; }
+        liberacoes = novas;
+        salvar(); renderReceber(); recalc();
+        document.getElementById('ml-status').textContent = '✅ ' + liberacoes.length + ' liberações importadas!';
+        document.getElementById('ml-status').style.color = 'var(--success)';
+        document.getElementById('ml-json-input').value = '';
       } catch(err){
-        alert('JSON inválido: ' + err.message);
+        alert('Erro no JSON: ' + err.message);
       }
     }
 
@@ -2674,32 +2747,112 @@ Invoke-WebRequest -Uri "http://localhost:8080/import" -Method POST -Body $body -
     }
 
     // ===== SIMULADOR - PLANILHA DE DIAS =====
+    // Dados da planilha simulador (editáveis)
+    let simPlanilhaDados = [];
+
     function renderPlanilhaSimulador(valorExtra, dataPag){
       const hoje = getToday();
-      let saldo = saldoAtual;
-      let html = '<table style="width:100%;font-size:12px;margin-top:15px;border-collapse:collapse;">';
-      html += '<thead><tr><th style="padding:6px;background:#f9fafb;border:1px solid #e5e5e5;">Data</th><th style="padding:6px;background:#f9fafb;border:1px solid #e5e5e5;">Entrada</th><th style="padding:6px;background:#f9fafb;border:1px solid #e5e5e5;">A Pagar</th><th style="padding:6px;background:#f9fafb;border:1px solid #e5e5e5;">Saldo Acum.</th></tr></thead><tbody>';
-
+      simPlanilhaDados = [];
       for(let i = 0; i < 30; i++){
         const data = addDias(hoje, i);
         const e = getEntrada(data);
-        const pagNormal = getPag(data);
-        const pagExtra = data === dataPag ? pagNormal + (valorExtra || 0) : pagNormal;
-        saldo += e.total - pagExtra;
-
-        const cor = saldo < reservaMinima ? 'background:#fef2f2;' : '';
-        const isPagDia = data === dataPag && valorExtra > 0;
-
-        html += `<tr style="${cor}">
-          <td style="padding:5px 8px;border:1px solid #e5e5e5;">${ptDate(data)} ${isPagDia ? '⬅️' : ''}</td>
-          <td style="padding:5px 8px;border:1px solid #e5e5e5;color:var(--success);">${fmt(e.total)}</td>
-          <td style="padding:5px 8px;border:1px solid #e5e5e5;color:var(--danger);">${fmt(pagExtra)}</td>
-          <td style="padding:5px 8px;border:1px solid #e5e5e5;font-weight:600;color:${saldo<reservaMinima?'var(--danger)':'var(--success)'};">${fmt(saldo)}</td>
-        </tr>`;
+        const compra = data === dataPag ? (valorExtra || 0) : 0;
+        simPlanilhaDados.push({data, conf:e.conf, proj:e.proj, pag:getPag(data), compra});
       }
+      return gerarHTMLPlanilhaSimulador();
+    }
 
-      html += '</tbody></table>';
+    function gerarHTMLPlanilhaSimulador(){
+      let saldoReal = saldoAtual;
+      let saldoSim  = saldoAtual;
+      const th = 'padding:7px 8px;background:#f9fafb;border:1px solid #e5e5e5;font-size:11px;white-space:nowrap;';
+      const td = 'padding:5px 8px;border:1px solid #e5e5e5;font-size:12px;';
+      let html = `<div style="margin-top:15px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <strong style="font-size:13px;">Fluxo 30 dias — edite "Compra simulada" em qualquer linha</strong>
+          <button class="btn-out btn-sm" onclick="recalcularSimulador()">↺ Recalcular</button>
+        </div>
+        <div style="overflow-x:auto;max-height:400px;overflow-y:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead style="position:sticky;top:0;z-index:5;"><tr>
+            <th style="${th}">Data</th>
+            <th style="${th}">Conf. ML</th>
+            <th style="${th}">Proj. compl.</th>
+            <th style="${th}">A pagar</th>
+            <th style="${th}">Compra simulada ℹ️</th>
+            <th style="${th}">Saldo real acum. ℹ️</th>
+            <th style="${th}">Saldo simulado acum. ℹ️</th>
+            <th style="${th}">Status</th>
+          </tr></thead><tbody>`;
+
+      simPlanilhaDados.forEach((d, i) => {
+        saldoReal += d.conf + d.proj - d.pag;
+        saldoSim  += d.conf + d.proj - d.pag - d.compra;
+        const corLinha = saldoSim < reservaMinima ? 'background:#fff5f5;' : '';
+        const status = saldoSim < reservaMinima
+          ? '<span style="color:var(--danger);font-size:11px;">⚠️ risco</span>'
+          : '<span style="color:var(--success);font-size:11px;">✓ ok</span>';
+        html += `<tr style="${corLinha}">
+          <td style="${td}">${ptDate(d.data)}</td>
+          <td style="${td};color:var(--success);">${d.conf>0?fmt(d.conf):'—'}</td>
+          <td style="${td};color:#0891b2;">${d.proj>0?fmt(d.proj):'—'}</td>
+          <td style="${td};color:var(--danger);">${d.pag>0?fmt(d.pag):'—'}</td>
+          <td style="${td};padding:2px 4px;">
+            <input type="number" value="${d.compra||''}" min="0" step="100"
+              style="width:120px;padding:4px 6px;border:1px solid ${d.compra>0?'var(--primary)':'#e5e5e5'};border-radius:4px;font-size:12px;background:${d.compra>0?'#eff6ff':'#fff'};"
+              onchange="simPlanilhaDados[${i}].compra=+this.value||0;recalcularSimulador()">
+          </td>
+          <td style="${td};font-weight:600;color:${saldoReal<reservaMinima?'var(--danger)':'var(--success)'};">${fmt(saldoReal)}</td>
+          <td style="${td};font-weight:600;color:${saldoSim<reservaMinima?'var(--danger)':'var(--success)'};">${fmt(saldoSim)}</td>
+          <td style="${td}">${status}</td>
+        </tr>`;
+      });
+      html += '</tbody></table></div></div>';
       return html;
+    }
+
+    function recalcularSimulador(){
+      const res = document.getElementById('sim-resultado');
+      if(res && simPlanilhaDados.length > 0){
+        const badge = res.querySelector('.alert');
+        res.innerHTML = (badge ? badge.outerHTML : '') + gerarHTMLPlanilhaSimulador();
+      }
+    }
+
+
+    // ===== SELEÇÃO MÚLTIPLA CONTAS A PAGAR =====
+    function selecionarTodosPagar(checked){
+      document.querySelectorAll('.cb-pagar').forEach(cb => cb.checked = checked);
+      atualizarContPagar();
+    }
+
+    function atualizarContPagar(){
+      const sel = document.querySelectorAll('.cb-pagar:checked').length;
+      const el = document.getElementById('pagar-sel-count');
+      if(el) el.textContent = sel > 0 ? sel + ' selecionado(s)' : '';
+      const cbTodos = document.getElementById('cb-todos');
+      const total = document.querySelectorAll('.cb-pagar').length;
+      if(cbTodos) cbTodos.indeterminate = sel > 0 && sel < total;
+      if(cbTodos) cbTodos.checked = sel === total && total > 0;
+    }
+
+    function getIdxsSelecionadosPagar(){
+      return Array.from(document.querySelectorAll('.cb-pagar:checked')).map(cb => parseInt(cb.dataset.idx));
+    }
+
+    function marcarSelecionadosPagos(){
+      const idxs = getIdxsSelecionadosPagar();
+      if(!idxs.length){ alert('Selecione ao menos 1 lançamento'); return; }
+      idxs.forEach(i => { pagamentos[i].pago = true; pagamentos[i].dataPaga = getToday(); });
+      salvar(); renderPagar(); recalc();
+    }
+
+    function deletarSelecionadosPagar(){
+      const idxs = getIdxsSelecionadosPagar();
+      if(!idxs.length){ alert('Selecione ao menos 1 lançamento'); return; }
+      if(!confirm('Deletar ' + idxs.length + ' lançamento(s)?')) return;
+      idxs.sort((a,b) => b-a).forEach(i => pagamentos.splice(i,1));
+      salvar(); renderPagar(); recalc();
     }
 
     // ===== INIT =====
