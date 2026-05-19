@@ -415,6 +415,30 @@
       margin:1px 0;
     }
     
+    /* Kanban Contas a Pagar */
+    .kanban-board{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px;}
+    .kanban-col{background:var(--gray-50);border-radius:8px;overflow:hidden;}
+    .kanban-col-header{padding:10px 14px;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;}
+    .kanban-col-header.em-aberto{background:#fef3c7;color:#92400e;}
+    .kanban-col-header.atrasado{background:#fee2e2;color:#991b1b;}
+    .kanban-col-header.pago{background:#d1fae5;color:#065f46;}
+    .kanban-col-header.hoje{background:#dbeafe;color:#1e40af;}
+    .kanban-items{padding:8px;display:flex;flex-direction:column;gap:6px;min-height:100px;max-height:500px;overflow-y:auto;}
+    .kanban-card{background:#fff;border-radius:6px;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,0.08);cursor:pointer;border-left:3px solid transparent;transition:all 0.2s;}
+    .kanban-card:hover{box-shadow:0 3px 8px rgba(0,0,0,0.12);}
+    .kanban-card.atrasado{border-color:var(--danger);}
+    .kanban-card.hoje{border-color:var(--primary);}
+    .kanban-card.em-aberto{border-color:var(--warning);}
+    .kanban-card.pago{border-color:var(--success);opacity:0.7;}
+    .kanban-card-title{font-weight:600;font-size:12px;margin-bottom:3px;}
+    .kanban-card-forn{font-size:11px;color:#666;margin-bottom:4px;}
+    .kanban-card-val{font-size:14px;font-weight:700;}
+    .kanban-card-date{font-size:10px;color:#999;margin-top:3px;}
+    .kanban-total{padding:8px 14px;font-size:11px;font-weight:600;border-top:1px solid #e5e5e5;background:var(--gray-50);}
+
+    /* Calendário A Receber */
+    .rec-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--gray-200);}
+
     /* Toggle buttons active state */
     .btn-toggle{
       padding:6px 14px;
@@ -471,7 +495,7 @@
       <ul class="nav-menu">
         <li class="nav-item active" onclick="nav('dashboard')">📊 Dashboard</li>
         <li class="nav-item" onclick="nav('calendario')">📅 Calendário</li>
-        <li class="nav-item" onclick="nav('planilha')">📋 Planilha</li>
+        <li class="nav-item" onclick="nav('planilha')">📋 Fluxo de Caixa</li>
         <li class="nav-item" onclick="nav('pagar')">💰 Contas a pagar</li>
         <li class="nav-item" onclick="nav('receber')">💵 A receber ML</li>
         <li class="nav-item" onclick="nav('simulador')">🎯 Simulador</li>
@@ -615,11 +639,11 @@
       
       <!-- PLANILHA -->
       <div id="view-planilha" class="view">
-        <h1 style="margin-bottom:20px;">Planilha 30 dias</h1>
+        <h1 style="margin-bottom:20px;">Fluxo de Caixa</h1>
         
         <div class="card">
           <div class="card-header">
-            <div>Fluxo de Caixa Projetado</div>
+            <div>Fluxo de Caixa — dia a dia</div>
             <div class="d-flex gap-1">
               <button class="btn-toggle active" id="plan-toggle-conf" onclick="togglePlanilha('confirmado')">Confirmado</button>
               <button class="btn-toggle" id="plan-toggle-proj" onclick="togglePlanilha('projetado')">Confirmado + Projetado</button>
@@ -648,9 +672,14 @@
       
       <!-- CONTAS A PAGAR -->
       <div id="view-pagar" class="view">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
           <h1>Contas a Pagar</h1>
-          <div class="d-flex gap-1">
+          <div class="d-flex gap-1" style="flex-wrap:wrap;">
+            <div class="d-flex gap-1" style="border:1px solid var(--gray-200);border-radius:6px;overflow:hidden;">
+              <button class="btn-toggle active" id="pagar-view-lista" onclick="setPagarView('lista')" style="border-radius:0;border:none;">☰ Lista</button>
+              <button class="btn-toggle" id="pagar-view-kanban" onclick="setPagarView('kanban')" style="border-radius:0;border:none;">⬛ Colunas</button>
+              <button class="btn-toggle" id="pagar-view-cal" onclick="setPagarView('cal')" style="border-radius:0;border:none;">📅 Calendário</button>
+            </div>
             <button class="btn" onclick="abrirModalLanc()">+ Novo</button>
             <button class="btn-out" onclick="document.getElementById('import-pagar-csv').click()">📤 Importar CSV</button>
             <input type="file" id="import-pagar-csv" accept=".csv" style="display:none" onchange="importarCSV()">
@@ -704,12 +733,20 @@
             </div>
           </div>
           <div id="lista-pagar" class="entry-list"></div>
+          <div id="kanban-pagar" style="display:none;"></div>
+          <div id="cal-pagar" style="display:none;"></div>
         </div>
       </div>
       
       <!-- A RECEBER ML -->
       <div id="view-receber" class="view">
-        <h1 style="margin-bottom:20px;">A Receber — Mercado Livre</h1>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <h1>A Receber — Mercado Livre</h1>
+          <div class="d-flex gap-1" style="border:1px solid var(--gray-200);border-radius:6px;overflow:hidden;">
+            <button class="btn-toggle active" id="rec-view-lista" onclick="setRecView('lista')" style="border-radius:0;border:none;">☰ Lista</button>
+            <button class="btn-toggle" id="rec-view-cal" onclick="setRecView('cal')" style="border-radius:0;border:none;">📅 Calendário</button>
+          </div>
+        </div>
 
         <!-- Resumo -->
         <div class="stats-grid">
@@ -746,22 +783,39 @@
           </div>
         </div>
 
-        <!-- Lista de liberações -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Liberações agendadas</div>
+        <!-- Lista / Calendário -->
+        <div id="rec-lista-view">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Liberações agendadas</div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Dia</th>
+                    <th style="text-align:right;">Valor</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-receber"></tbody>
+              </table>
+            </div>
           </div>
-          <div style="overflow-x:auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Dia</th>
-                  <th style="text-align:right;">Valor</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-receber"></tbody>
-            </table>
+        </div>
+
+        <div id="rec-cal-view" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <button class="btn-out btn-sm" onclick="navegarRecMes(-1)">◀</button>
+                <span id="rec-cal-label" style="min-width:160px;display:inline-block;text-align:center;font-weight:600;">—</span>
+                <button class="btn-out btn-sm" onclick="navegarRecMes(1)">▶</button>
+              </div>
+            </div>
+            <div class="card-body" style="padding:0;">
+              <div id="rec-cal-grid" class="cal-grid"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1168,7 +1222,9 @@
     let categorias = [];
     
     // Configurações
-    let saldoAtual = 0;
+    let saldoAtual = 0;    // total = saldoMP + saldoOutros
+    let saldoMP = 0;        // saldo Mercado Pago (pode vir da API)
+    let saldoOutros = 0;    // outros bancos (manual)
     let cfgDelay = 12;
     let cfgPct = 0.85;
     let reservaMinima = 15000;
@@ -1270,6 +1326,14 @@
       return dias[d.getDay()];
     }
     
+    function atualizarSaldoTotal(){
+      saldoAtual = saldoMP + saldoOutros;
+      const label = document.getElementById('saldo-total-label');
+      if(label) label.textContent = fmt(saldoAtual);
+      salvarCfg();
+      recalc();
+    }
+
     // ===== CÁLCULOS =====
     function getEntrada(data){
       // Entrada confirmada ML
@@ -2004,7 +2068,9 @@
         cfgPct,
         reservaMinima,
         periodoHistorico,
-        saldoAtual
+        saldoAtual,
+        saldoMP,
+        saldoOutros
       }));
     }
     
@@ -2023,6 +2089,8 @@
         const obj = JSON.parse(cfg);
         cfgDelay = obj.cfgDelay || 12;
         saldoAtual = obj.saldoAtual || 0;
+        saldoMP = obj.saldoMP || 0;
+        saldoOutros = obj.saldoOutros || 0;
         cfgPct = obj.cfgPct || 0.85;
         reservaMinima = obj.reservaMinima || 15000;
         periodoHistorico = obj.periodoHistorico || 30;
@@ -2820,6 +2888,157 @@ Invoke-WebRequest -Uri "http://localhost:8080/import" -Method POST -Body $body -
     }
 
 
+
+    // ===== VISUALIZAÇÃO CONTAS A PAGAR =====
+    let pagarViewMode = 'lista';
+
+    function setPagarView(mode){
+      pagarViewMode = mode;
+      ['lista','kanban','cal'].forEach(m => {
+        document.getElementById(m+'-pagar').style.display = m === mode ? 'block' : 'none';
+        document.getElementById('pagar-view-'+m).className = 'btn-toggle' + (m === mode ? ' active' : '');
+      });
+      if(mode === 'lista') renderPagar();
+      else if(mode === 'kanban') renderKanbanPagar();
+      else if(mode === 'cal') renderCalPagar();
+    }
+
+    function renderKanbanPagar(){
+      const hoje = getToday();
+      const cols = {
+        atrasado: {label:'⚠️ Atrasado', items:[], css:'atrasado'},
+        hoje:     {label:'📅 Hoje',     items:[], css:'hoje'},
+        aberto:   {label:'🕐 Em aberto',items:[], css:'em-aberto'},
+        pago:     {label:'✓ Pago',      items:[], css:'pago'},
+      };
+
+      pagamentos.forEach((p, idx) => {
+        if(p.pago) cols.pago.items.push({p, idx});
+        else if(p.data === hoje) cols.hoje.items.push({p, idx});
+        else if(p.data < hoje) cols.atrasado.items.push({p, idx});
+        else cols.aberto.items.push({p, idx});
+      });
+
+      // Ordenar cada coluna por data
+      Object.values(cols).forEach(col => col.items.sort((a,b) => a.p.data.localeCompare(b.p.data)));
+
+      const div = document.getElementById('kanban-pagar');
+      div.innerHTML = '<div class="kanban-board">' +
+        Object.values(cols).map(col => {
+          const total = col.items.reduce((s, {p}) => s + p.val, 0);
+          const cards = col.items.map(({p, idx}) => `
+            <div class="kanban-card ${col.css}" onclick="editarLanc(${idx})">
+              <div class="kanban-card-title">${p.desc} ${p.parcela ? '<span style="font-size:10px;color:#666;">('+p.parcela+')</span>' : ''}</div>
+              <div class="kanban-card-forn">${p.forn || 'Sem fornecedor'} · ${p.cat}</div>
+              <div class="kanban-card-val" style="color:${col.css==='pago'?'var(--success)':'var(--danger)'};">${fmt(p.val)}</div>
+              <div class="kanban-card-date">${ptDate(p.data)}</div>
+            </div>`).join('');
+          return `<div class="kanban-col">
+            <div class="kanban-col-header ${col.css}">${col.label} <span style="opacity:0.7;">(${col.items.length})</span></div>
+            <div class="kanban-items">${cards || '<div style="padding:20px;text-align:center;color:#ccc;font-size:12px;">Nenhuma conta</div>'}</div>
+            <div class="kanban-total">Total: ${fmt(total)}</div>
+          </div>`;
+        }).join('') + '</div>';
+    }
+
+    function renderCalPagar(){
+      const div = document.getElementById('cal-pagar');
+      // Reusar a lógica do calendário principal mas para contas a pagar
+      const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      const hoje = getToday();
+      const d = new Date();
+      const primeiroDia = new Date(d.getFullYear(), d.getMonth(), 1);
+      const ultimoDia = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      const diasAnt = primeiroDia.getDay();
+
+      let html = `<div style="padding:16px;">
+        <div style="text-align:center;font-weight:600;margin-bottom:12px;">${meses[d.getMonth()]} ${d.getFullYear()}</div>
+        <div class="cal-grid">`;
+
+      ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(dn =>
+        html += `<div class="cal-header">${dn}</div>`);
+
+      // Dias vazios antes
+      for(let i = 0; i < diasAnt; i++) html += '<div class="cal-day outro-mes"></div>';
+
+      // Dias do mês
+      for(let dia = 1; dia <= ultimoDia.getDate(); dia++){
+        const data = dateStr(new Date(d.getFullYear(), d.getMonth(), dia));
+        const contas = pagamentos.filter(p => p.data === data && !p.pago);
+        const atrasadas = pagamentos.filter(p => p.data === data && !p.pago && data < hoje);
+        const total = contas.reduce((s,p) => s+p.val, 0);
+        const isHoje = data === hoje;
+
+        html += `<div class="cal-day ${isHoje?'hoje':''}" onclick="abrirDia('${data}')">
+          <div class="cal-day-num">${dia}</div>
+          ${total > 0 ? `<div class="cal-valor-saida">-${fmt(total)}</div>
+          <div style="font-size:9px;color:#666;">${contas.length} conta(s)</div>` : ''}
+        </div>`;
+      }
+
+      // Preencher resto
+      const total = diasAnt + ultimoDia.getDate();
+      for(let i = total; i < 35; i++) html += '<div class="cal-day outro-mes"></div>';
+
+      html += '</div></div>';
+      div.innerHTML = html;
+    }
+
+    // ===== CALENDÁRIO A RECEBER =====
+    let recViewMode = 'lista';
+    let recMesAtual = new Date();
+
+    function setRecView(mode){
+      recViewMode = mode;
+      document.getElementById('rec-lista-view').style.display = mode === 'lista' ? 'block' : 'none';
+      document.getElementById('rec-cal-view').style.display = mode === 'cal' ? 'block' : 'none';
+      document.getElementById('rec-view-lista').className = 'btn-toggle' + (mode === 'lista' ? ' active' : '');
+      document.getElementById('rec-view-cal').className = 'btn-toggle' + (mode === 'cal' ? ' active' : '');
+      if(mode === 'cal') renderRecCal();
+    }
+
+    function navegarRecMes(dir){
+      recMesAtual.setMonth(recMesAtual.getMonth() + dir);
+      renderRecCal();
+    }
+
+    function renderRecCal(){
+      const div = document.getElementById('rec-cal-grid');
+      if(!div) return;
+      const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      const ano = recMesAtual.getFullYear();
+      const mes = recMesAtual.getMonth();
+
+      document.getElementById('rec-cal-label').textContent = meses[mes] + ' ' + ano;
+
+      const primeiroDia = new Date(ano, mes, 1);
+      const ultimoDia = new Date(ano, mes + 1, 0);
+      const diasAnt = primeiroDia.getDay();
+      const hoje = getToday();
+
+      let html = '';
+      ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(dn =>
+        html += `<div class="cal-header">${dn}</div>`);
+
+      for(let i = 0; i < diasAnt; i++) html += '<div class="cal-day outro-mes"></div>';
+
+      for(let dia = 1; dia <= ultimoDia.getDate(); dia++){
+        const data = dateStr(new Date(ano, mes, dia));
+        const total = liberacoes.filter(l => l.data === data).reduce((s,l) => s+l.val, 0);
+        const isHoje = data === hoje;
+
+        html += `<div class="cal-day ${isHoje?'hoje':''}">
+          <div class="cal-day-num">${dia}</div>
+          ${total > 0 ? `<div class="cal-valor-entrada">+${fmt(total)}</div>` : ''}
+        </div>`;
+      }
+
+      const total = diasAnt + ultimoDia.getDate();
+      for(let i = total; i < 35; i++) html += '<div class="cal-day outro-mes"></div>';
+
+      div.innerHTML = html;
+    }
+
     // ===== SELEÇÃO MÚLTIPLA CONTAS A PAGAR =====
     function selecionarTodosPagar(checked){
       document.querySelectorAll('.cb-pagar').forEach(cb => cb.checked = checked);
@@ -2859,7 +3078,11 @@ Invoke-WebRequest -Uri "http://localhost:8080/import" -Method POST -Body $body -
     function init(){
       // Atualizar valores nos controles
       const saldoInput = document.getElementById('saldo-inicial');
-      if(saldoInput) saldoInput.value = saldoAtual || '';
+      if(saldoInput) saldoInput.value = saldoOutros || '';
+      const saldoMPInput = document.getElementById('saldo-mp');
+      if(saldoMPInput) saldoMPInput.value = saldoMP || '';
+      const saldoTotalLabel = document.getElementById('saldo-total-label');
+      if(saldoTotalLabel) saldoTotalLabel.textContent = fmt(saldoMP + saldoOutros);
       document.getElementById('range-delay').value = cfgDelay;
       document.getElementById('input-delay').value = cfgDelay;
       document.getElementById('val-delay').textContent = cfgDelay + ' dias';
